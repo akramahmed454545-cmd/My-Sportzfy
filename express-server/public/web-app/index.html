@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sportzfy - Live Streaming App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <style>
+        /* Modern Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080c14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e2d4a;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00e5ff;
+        }
+
+        body {
+            background-color: #05080f;
+            color: #f3f4f6;
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Mobile-app container effect on wider desktop screens */
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: #080c14;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            border-left: 1px solid #131f37;
+            border-right: 1px solid #131f37;
+            position: relative;
+        }
+
+        /* Neon retro logo effect matching screenshot */
+        .neon-title {
+            color: #00E5FF;
+            text-shadow: 2px 2px 0px rgba(255, 0, 128, 0.7);
+            font-weight: 800;
+            letter-spacing: 0.05em;
+        }
+
+        /* Animated sliding drawer */
+        .drawer-transition {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Custom sport category active states */
+        .category-circle {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background-color: #0f172a;
+            border: 2px solid #1e2d4a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s ease;
+            position: relative;
+            cursor: pointer;
+        }
+        .category-circle.active {
+            border-color: #00e5ff;
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        /* M3 active tab capsule highlight */
+        .m3-capsule {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4px 0;
+        }
+        .m3-capsule-bg {
+            width: 64px;
+            height: 32px;
+            border-radius: 16px;
+            background-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .active-tab .m3-capsule-bg {
+            background-color: #00e5ff1b;
+            color: #00e5ff;
+        }
+        .active-tab span {
+            color: #00e5ff;
+            font-weight: 700;
+        }
+
+        /* Custom pulsing dot */
+        .live-pulse-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #ff3b30;
+            animation: pulse-animation 1.5s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+        }
+
+        /* Infinite horizontal scroll hide */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        @keyframes marquee {
+            0% { transform: translate3d(100%, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+        .animate-marquee {
+            animation: marquee 22s linear infinite;
+            display: inline-block;
+        }
+
+        /* Floating PiP player styles */
+        .floating-player {
+            position: fixed !important;
+            bottom: 80px !important; /* Spaced perfectly above the 64px bottom nav bar */
+            width: 180px !important;
+            border-radius: 16px !important;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.95), 0 0 20px rgba(0, 229, 255, 0.5) !important;
+            border: 2px solid #00E5FF !important;
+            z-index: 1000 !important;
+            background-color: #0c1222 !important;
+            padding: 6px !important;
+            animation: float-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes float-slide-in {
+            from {
+                transform: translateY(24px) scale(0.85);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .floating-player #nowPlayingTitle {
+            font-size: 8px !important;
+            max-width: 110px !important;
+        }
+        
+        .floating-player #webBannerAdContainer,
+        .floating-player #minimizePopupAdContainer,
+        .floating-player p.text-center {
+            display: none !important;
+        }
+
+        @media (min-width: 500px) {
+            .floating-player {
+                right: calc(50% - 234px) !important;
+                left: auto !important;
+            }
+        }
+        @media (max-width: 499px) {
+            .floating-player {
+                right: 16px !important;
+                left: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="font-sans antialiased">
+
+    <!-- Maintenance Mode Full Screen Block -->
+    <div id="maintenanceOverlay" class="fixed inset-0 bg-[#05080f] z-[10000] flex flex-col items-center justify-center p-6 text-center hidden">
+        <div class="relative w-full max-w-md bg-[#0c1222] border border-[#1e2d4a] rounded-3xl p-8 flex flex-col items-center shadow-2xl">
+            <div class="w-20 h-20 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mb-6 text-red-500 text-4xl animate-bounce">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+            </div>
+            <h1 class="text-2xl font-black neon-title mb-3 uppercase tracking-wider">System Maintenance</h1>
+            <div class="h-0.5 w-16 bg-gradient-to-r from-cyan-400 to-blue-500 mb-6"></div>
+            <p id="maintenanceNoticeMessage" class="text-gray-300 text-sm leading-relaxed mb-6 font-medium">
+                We are currently performing scheduled server maintenance. We'll be back shortly!
+            </p>
+            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                Thank you for your patience
+            </div>
+        </div>
+    </div>
+
+    <!-- App Open Ad Overlay -->
+    <div id="appOpenAdOverlay" class="fixed inset-0 bg-black/95 z-[9999] flex flex-col items-center justify-center p-6 hidden">
+        <div class="relative w-full max-w-lg bg-[#0c1222] border border-[#1e2d4a] rounded-3xl p-5 flex flex-col items-center shadow-2xl">
+            <!-- Ad Label -->
+            <div class="absolute top-4 left-4 bg-black/60 text-[10px] text-cyan-400 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+                Sponsored Ad
+            </div>
+            <!-- Skip / Timer Button -->
+            <button id="appOpenSkipBtn" disabled class="absolute top-4 right-4 bg-black/80 hover:bg-black text-gray-400 hover:text-white px-4 py-1.5 rounded-full text-xs font-black border border-[#1e2d4a] transition duration-200">
+                Skip in 5s
+            </button>
+            
+            <a id="appOpenAdLink" href="#" target="_blank" class="w-full mt-10 mb-4 block">
+                <!-- Static Image or Gif -->
+                <img id="appOpenAdImage" class="w-full h-auto max-h-[380px] object-contain rounded-2xl hidden" src="" alt="Sponsor">
+                <!-- Video -->
+                <video id="appOpenAdVideo" class="w-full h-auto max-h-[380px] object-contain rounded-2xl hidden" loop autoplay muted playsinline></video>
+                <!-- HTML5 Iframe -->
+                <iframe id="appOpenAdIframe" class="w-full h-[380px] border-0 rounded-2xl hidden" allow="autoplay"></iframe>
+            </a>
+            
+            <!-- Redirection prompt -->
+            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider text-center">
+                Click ad to visit advertiser website <i class="fa-solid fa-arrow-up-right-from-square ml-1 text-cyan-400"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backdrop -->
+    <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity duration-300 opacity-0" onclick="toggleDrawer(false)"></div>
+
+    <!-- Left Drawer Menu (Sidebar) -->
+    <div id="drawerMenu" class="fixed top-0 left-0 h-full w-[280px] bg-[#080c14] border-r border-[#1a263d] z-50 transform -translate-x-full drawer-transition flex flex-col">
+        <div class="p-6 border-b border-[#1e2d4a] flex items-center justify-between">
+            <span class="text-3xl font-extrabold neon-title">Sportzfy</span>
+            <button onclick="toggleDrawer(false)" class="text-gray-400 hover:text-white p-1 rounded-full"><i class="fa-solid fa-arrow-left"></i></button>
+        </div>
+        <div class="flex-grow overflow-y-auto p-4 space-y-4">
+            <!-- Highlighted Download APK card inside Drawer -->
+            <a href="/apk/sportzfy-latest.apk" class="block bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-cyan-500/40 p-4 rounded-2xl shadow-lg hover:border-cyan-400 transition group text-center">
+                <div class="flex items-center justify-center space-x-2 text-cyan-400 font-extrabold text-sm mb-1">
+                    <i class="fa-brands fa-android text-lg animate-bounce"></i>
+                    <span>Get the Official App</span>
+                </div>
+                <p class="text-[10px] text-gray-400 leading-normal">Download the Sportzfy Android APK to stream ad-free in high quality on your phone!</p>
+                <span class="inline-block mt-2 bg-cyan-500 text-black text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest group-hover:bg-cyan-400 transition">Download Now</span>
+            </a>
+
+            <div class="space-y-1">
+                <div onclick="showDrawerToast('Network Stream')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-circle-play text-cyan-400 text-sm"></i>
+                    <span>Network Stream</span>
+                </div>
+                <div onclick="showDrawerToast('Remote Sync Panel')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-arrows-rotate text-cyan-400 text-sm"></i>
+                    <span>Remote Sync Panel</span>
+                </div>
+                <div onclick="showDrawerToast('Playlists')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-list text-cyan-400 text-sm"></i>
+                    <span>Playlists</span>
+                </div>
+                <div onclick="showDrawerToast('Floating Player')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-window-restore text-cyan-400 text-sm"></i>
+                    <span>Floating Player</span>
+                </div>
+                <div onclick="showDrawerToast('Video Quality Setting')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-gear text-cyan-400 text-sm"></i>
+                    <span>Video Quality Setting</span>
+                </div>
+                <div onclick="showDrawerToast('Select Streaming Player')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-circle-chevron-right text-cyan-400 text-sm"></i>
+                    <span>Select Streaming Player</span>
+                </div>
+                <div onclick="showDrawerToast('Crash Log')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-wrench text-cyan-400 text-sm"></i>
+                    <span>Crash Log Dialog</span>
+                </div>
+                <div onclick="showDrawerToast('Notice Board')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-bell text-cyan-400 text-sm"></i>
+                    <span>Notice</span>
+                </div>
+                <div onclick="showDrawerToast('Join Us')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-user-group text-cyan-400 text-sm"></i>
+                    <span>Join Us</span>
+                </div>
+                <div onclick="showDrawerToast('Copyright Information')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-info-circle text-cyan-400 text-sm"></i>
+                    <span>Copyright</span>
+                </div>
+                <a href="/apk/sportzfy-latest.apk" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-share-nodes text-cyan-400 text-sm"></i>
+                    <span>Share Our App</span>
+                </a>
+            </div>
+        </div>
+        <div class="p-4 border-t border-[#1e2d4a] text-center text-[10px] text-gray-500 font-semibold">
+            Sportzfy v3.5 - Web Player Edition
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div class="app-container">
+        <!-- App Header -->
+        <header class="bg-[#0c1222] border-b border-[#131f37] h-[56px] px-4 flex items-center justify-between sticky top-0 z-30">
+            <div class="flex items-center space-x-4">
+                <button onclick="toggleDrawer(true)" class="text-gray-300 hover:text-white text-lg focus:outline-none"><i class="fa-solid fa-bars"></i></button>
+                <span class="text-2xl neon-title">Sportzfy</span>
+            </div>
+            <div class="flex items-center space-x-4 text-gray-300">
+                <button onclick="forceSyncData()" id="forceSyncBtn" class="hover:text-[#00E5FF] text-lg focus:outline-none flex items-center justify-center transition" title="Force Sync Data">
+                    <i id="syncIcon" class="fa-solid fa-arrows-rotate"></i>
+                </button>
+                <button onclick="toggleSearch()" class="hover:text-[#00E5FF] text-lg focus:outline-none"><i class="fa-solid fa-magnifying-glass"></i></button>
+                <button onclick="showDrawerToast('Favorites')" class="hover:text-[#00E5FF] text-lg focus:outline-none"><i class="fa-solid fa-star"></i></button>
+                <a href="/apk/sportzfy-latest.apk" class="bg-gradient-to-r from-cyan-500 to-blue-500 text-black font-extrabold text-[10px] px-3 py-1.5 rounded-full flex items-center space-x-1 hover:brightness-110 transition shadow-md">
+                    <i class="fa-brands fa-android text-xs"></i>
+                    <span>GET APP</span>
+                </a>
+            </div>
+        </header>
+
+        <!-- Search Field (Collapsible) -->
+        <div id="searchBar" class="hidden bg-[#0c1222] border-b border-[#131f37] p-3 transition-all duration-300">
+            <div class="relative">
+                <input id="searchInput" type="text" oninput="handleSearch()" class="w-full bg-[#05080f] text-white border border-[#1e2d4a] rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-cyan-400" placeholder="Search matches, channels or highlights...">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500"><i class="fa-solid fa-magnifying-glass text-xs"></i></span>
+                <button onclick="clearSearch()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-white"><i class="fa-solid fa-circle-xmark text-xs"></i></button>
+            </div>
+        </div>
+
+        <!-- Ad-Free Ticker Text Banner -->
+        <div class="bg-[#05080f] py-1 px-4 border-b border-[#131f37] overflow-hidden relative h-[24px] flex items-center">
+            <div class="whitespace-nowrap inline-block animate-marquee text-[10px] text-[#00E5FF] italic font-semibold">
+                (Ads Free). Keep supporting us for the best sports streaming experience! Install the Android app for full screen support.
+            </div>
+        </div>
+
+        <!-- Interactive Video Player Area -->
+        <div id="playerSection" class="hidden bg-[#0c1222] border-b border-[#131f37] p-3 transition-all">
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center space-x-1.5">
+                    <span class="live-pulse-dot"></span>
+                    <h2 id="nowPlayingTitle" class="text-xs font-bold text-cyan-400 truncate max-w-[320px]">Streaming Live</h2>
+                </div>
+                <button onclick="closePlayer()" class="text-gray-400 hover:text-white bg-gray-800 p-1 rounded-full"><i class="fa-solid fa-xmark text-xs"></i></button>
+            </div>
+            <div class="bg-black rounded-xl overflow-hidden aspect-video relative flex items-center justify-center border border-[#1e2d4a]">
+                <video id="videoElement" controls class="w-full h-full object-contain hidden"></video>
+                <iframe id="iframeElement" class="w-full h-full border-0 hidden" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+                <div id="playerLoading" class="absolute inset-0 bg-black/80 flex items-center justify-center hidden">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+                </div>
+
+                <!-- Pre-roll Ad Overlay -->
+                <div id="preRollAdOverlay" class="absolute inset-0 bg-black/90 z-20 flex flex-col items-center justify-center p-4 hidden">
+                    <div class="absolute top-3 right-3 flex items-center gap-2">
+                        <button id="preRollSkipBtn" disabled class="bg-black/80 hover:bg-black text-gray-400 hover:text-white px-3 py-1 rounded-full text-[10px] font-black border border-[#1e2d4a] transition duration-200">
+                            Skip in 5s
+                        </button>
+                    </div>
+                    <div class="absolute top-3 left-3 bg-black/60 text-[8px] text-cyan-400 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Pre-roll Ad
+                    </div>
+                    <a id="preRollAdLink" href="#" target="_blank" class="w-full h-full flex items-center justify-center max-h-[75%]">
+                        <img id="preRollAdImage" class="w-full h-full object-contain rounded-lg hidden" src="" alt="Ad">
+                        <video id="preRollAdVideo" class="w-full h-full object-contain rounded-lg hidden" loop autoplay muted playsinline></video>
+                        <iframe id="preRollAdIframe" class="w-full h-full border-0 rounded-lg hidden" allow="autoplay"></iframe>
+                    </a>
+                    <p class="text-[9px] text-gray-500 mt-2">Ad sponsored by advertiser. Tap to explore.</p>
+                </div>
+
+                <!-- Minimize Pop-up Ad Container -->
+                <div id="minimizePopupAdContainer" class="absolute bottom-3 right-3 bg-[#0c1222]/95 border border-cyan-500/30 rounded-xl shadow-2xl p-1.5 max-w-[160px] z-[25] hidden transition-all duration-300">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[8px] font-extrabold text-cyan-400 uppercase tracking-widest px-1">Sponsored</span>
+                        <button onclick="closeMinimizePopupAd()" class="text-gray-400 hover:text-white text-[9px] bg-gray-800/80 px-1 rounded-md"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <a id="minimizePopupAdLink" href="#" target="_blank" class="block w-full">
+                        <img id="minimizePopupAdImage" class="w-full h-auto rounded-lg hidden" src="" alt="Ad">
+                        <video id="minimizePopupAdVideo" class="w-full h-auto rounded-lg hidden" loop autoplay muted playsinline></video>
+                    </a>
+                </div>
+            </div>
+            <p class="text-[9px] text-gray-500 mt-1 text-center font-medium">💡 Stream will play instantly. Supports HLS (.m3u8), YouTube, and Twitch embeds.</p>
+
+            <!-- Smart Fallback Container -->
+            <div id="smartFallbackContainer" class="hidden mt-2.5 p-2.5 bg-[#080d1a] border border-[#1e2d4a] rounded-xl flex items-center justify-between shadow-lg">
+                <div class="flex items-center space-x-2">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <div class="text-[10px] text-gray-400">
+                        <span class="text-gray-300 font-bold uppercase tracking-wider text-[9px]">Active Line:</span> 
+                        <span id="currentStreamLabel" class="text-cyan-400 font-black">Primary Stream</span>
+                    </div>
+                </div>
+                <button onclick="cycleFallbackStream()" class="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-black px-3.5 py-2 rounded-lg text-[10px] uppercase tracking-wider transition duration-200 flex items-center gap-1.5 shadow-md">
+                    <i class="fa-solid fa-arrows-spin animate-spin text-cyan-200" style="animation-duration: 3s;"></i>
+                    <span>Smart Fallback Line</span>
+                </button>
+            </div>
+
+            <!-- Manual Clickable Banner Ad / Player -->
+            <div id="webBannerAdContainer" class="hidden mt-3 border border-dashed border-[#1e2d4a] rounded-xl overflow-hidden bg-black/40 p-1 relative group">
+                <a id="webBannerAdLink" href="#" target="_blank" class="block w-full h-full">
+                    <div class="relative w-full flex justify-center items-center overflow-hidden rounded-lg min-h-[45px]">
+                        <!-- Render Image/GIF -->
+                        <img id="webBannerImage" class="hidden w-full h-auto max-h-[160px] object-contain transition-transform duration-300 group-hover:scale-[1.02]" src="" alt="Advertisement">
+                        <!-- Render Video -->
+                        <video id="webBannerVideo" class="hidden w-full h-auto max-h-[160px] object-contain" loop muted autoplay playsinline></video>
+
+                        <!-- Click Indicator Overlay -->
+                        <div class="absolute top-2 right-2 bg-black/70 text-[9px] text-cyan-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span>Visit Link</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- App Content Scroller -->
+        <div class="flex-grow overflow-y-auto pb-[72px]" id="appContent">
+
+            <!-- TAB 1: HOME -->
+            <div id="tabContent-home" class="p-4 space-y-4">
+                <!-- Categories Horizontal Bar -->
+                <div class="flex space-x-3 overflow-x-auto no-scrollbar py-2">
+                    <!-- All Circle -->
+                    <div class="flex flex-col items-center space-y-1.5 shrink-0" onclick="filterSport('All')">
+                        <div id="circle-All" class="category-circle active">
+                            <span class="text-xs font-extrabold text-white">ALL</span>
+                            <span id="badge-All" class="absolute -top-1 -right-1 bg-red-500 text-[9px] text-white font-extrabold px-1.5 py-0.5 rounded-full border border-[#080c14] hidden">0</span>
+                        </div>
+                        <span id="label-All" class="text-[10px] font-bold text-cyan-400">All</span>
+                    </div>
+
+                    <!-- Cricket Circle -->
+                    <div class="flex flex-col items-center space-y-1.5 shrink-0" onclick="filterSport('Cricket')">
+                        <div id="circle-Cricket" class="category-circle">
+                            <span class="text-2xl">🏏</span>
+                            <span id="badge-Cricket" class="absolute -top-1 -right-1 bg-red-500 text-[9px] text-white font-extrabold px-1.5 py-0.5 rounded-full border border-[#080c14] hidden">0</span>
+                        </div>
+                        <span id="label-Cricket" class="text-[10px] font-semibold text-gray-400">Cricket</span>
+                    </div>
+
+                    <!-- Football Circle -->
+                    <div class="flex flex-col items-center space-y-1.5 shrink-0" onclick="filterSport('Football')">
+                        <div id="circle-Football" class="category-circle">
+                            <span class="text-2xl">⚽</span>
+                            <span id="badge-Football" class="absolute -top-1 -right-1 bg-red-500 text-[9px] text-white font-extrabold px-1.5 py-0.5 rounded-full border border-[#080c14] hidden">0</span>
+                        </div>
+                        <span id="label-Football" class="text-[10px] font-semibold text-gray-400">Football</span>
+                    </div>
+
+                    <!-- MotorSports Circle -->
+                    <div class="flex flex-col items-center space-y-1.5 shrink-0" onclick="filterSport('MotorSports')">
+                        <div id="circle-MotorSports" class="category-circle">
+                            <span class="text-2xl">🏎️</span>
+                            <span id="badge-MotorSports" class="absolute -top-1 -right-1 bg-red-500 text-[9px] text-white font-extrabold px-1.5 py-0.5 rounded-full border border-[#080c14] hidden">0</span>
+                        </div>
+                        <span id="label-MotorSports" class="text-[10px] font-semibold text-gray-400">MotorSport</span>
+                    </div>
+
+                    <!-- Wrestling Circle -->
+                    <div class="flex flex-col items-center space-y-1.5 shrink-0" onclick="filterSport('Wrestling')">
+                        <div id="circle-Wrestling" class="category-circle">
+                            <span class="text-2xl">🤼</span>
+                            <span id="badge-Wrestling" class="absolute -top-1 -right-1 bg-red-500 text-[9px] text-white font-extrabold px-1.5 py-0.5 rounded-full border border-[#080c14] hidden">0</span>
+                        </div>
+                        <span id="label-Wrestling" class="text-[10px] font-semibold text-gray-400">Wrestling</span>
+                    </div>
+                </div>
+
+                <!-- Status Filter Pills -->
+                <div class="flex space-x-2 py-1 overflow-x-auto no-scrollbar">
+                    <button onclick="filterStatus('Recent')" id="pill-Recent" class="px-4 py-1.5 bg-[#0f172a] hover:bg-[#1e2d4a] text-xs font-semibold rounded-full border border-transparent text-gray-400 transition shrink-0">Recent</button>
+                    <button onclick="filterStatus('Live')" id="pill-Live" class="px-4 py-1.5 bg-[#0f172a] hover:bg-[#1e2d4a] text-xs font-semibold rounded-full border border-transparent text-gray-400 transition shrink-0">Live</button>
+                    <button onclick="filterStatus('Upcoming')" id="pill-Upcoming" class="px-4 py-1.5 bg-[#0f172a] hover:bg-[#1e2d4a] text-xs font-semibold rounded-full border border-transparent text-gray-400 transition shrink-0">Upcoming</button>
+                    <button onclick="filterStatus('All')" id="pill-All" class="px-4 py-1.5 bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/40 text-xs font-extrabold rounded-full transition shrink-0">All Matches</button>
+                </div>
+
+                <!-- Live Matches List -->
+                <div id="matchesContainer" class="space-y-4">
+                    <!-- Dynamic matches cards -->
+                </div>
+            </div>
+
+            <!-- TAB 2: CATEGORIES (LIVE TV) -->
+            <div id="tabContent-categories" class="p-4 space-y-5 hidden">
+                <h2 class="text-lg font-bold text-white tracking-wide">Live TV & Categories</h2>
+                <div id="categoriesContainer" class="space-y-6">
+                    <!-- Dynamic categories groups and cards -->
+                </div>
+            </div>
+
+            <!-- TAB 3: HIGHLIGHTS -->
+            <div id="tabContent-highlights" class="p-4 space-y-4 hidden">
+                <h2 class="text-lg font-bold text-white tracking-wide">Match Highlights Feed</h2>
+                <div id="highlightsContainer" class="space-y-4">
+                    <!-- Dynamic highlights cards -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- M3 Bottom Navigation Bar -->
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] bg-[#0c1222]/95 backdrop-blur-md border-t border-l border-r border-[#131f37] h-[64px] flex justify-around items-center z-30 px-2">
+            <button onclick="switchTab('home')" id="btnTab-home" class="flex flex-col items-center justify-center text-gray-400 hover:text-white transition group flex-grow max-w-[120px] active-tab">
+                <div class="m3-capsule">
+                    <div class="m3-capsule-bg">
+                        <i class="fa-solid fa-house text-lg"></i>
+                    </div>
+                    <span class="text-[10px] mt-1 font-semibold tracking-wide">Home</span>
+                </div>
+            </button>
+
+            <button onclick="switchTab('categories')" id="btnTab-categories" class="flex flex-col items-center justify-center text-gray-400 hover:text-white transition group flex-grow max-w-[120px]">
+                <div class="m3-capsule">
+                    <div class="m3-capsule-bg">
+                        <i class="fa-solid fa-list-ul text-lg"></i>
+                    </div>
+                    <span class="text-[10px] mt-1 font-semibold tracking-wide">Categories</span>
+                </div>
+            </button>
+
+            <button onclick="switchTab('highlights')" id="btnTab-highlights" class="flex flex-col items-center justify-center text-gray-400 hover:text-white transition group flex-grow max-w-[120px]">
+                <div class="m3-capsule">
+                    <div class="m3-capsule-bg">
+                        <i class="fa-solid fa-play text-lg"></i>
+                    </div>
+                    <span class="text-[10px] mt-1 font-semibold tracking-wide">Highlights</span>
+                </div>
+            </button>
+        </nav>
+
+        <!-- Slide Toast Alert -->
+        <div id="toastAlert" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-[#00E5FF] text-[#080c14] text-xs font-bold px-4 py-2.5 rounded-full shadow-2xl z-50 pointer-events-none transition duration-300 opacity-0 scale-90">
+            Action triggered successfully!
+        </div>
+    </div>
+
+    <script>
+        let activeSport = 'All';
+        let activeStatus = 'All';
+        let activeTab = 'home';
+        let searchQuery = '';
+
+        let allMatches = [];
+        let allChannels = [];
+        let allHighlights = [];
+        let useCacheBuster = false;
+
+        function showMatchesSkeletons() {
+            const container = document.getElementById('matchesContainer');
+            if (!container) return;
+            let html = '';
+            for (let i = 0; i < 3; i++) {
+                html += `
+                <div class="animate-pulse bg-[#0c1424] border border-[#1a263d] rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="h-3 w-24 bg-[#1e2d4a]/80 rounded-md"></div>
+                        <div class="flex items-center space-x-2">
+                            <div class="h-3 w-10 bg-[#1e2d4a]/80 rounded-md"></div>
+                            <div class="h-4 w-12 bg-[#1e2d4a]/80 rounded-md"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between py-2 px-1">
+                        <div class="flex items-center space-x-3 w-[45%]">
+                            <div class="w-10 h-10 rounded-full bg-[#1e2d4a]/80 shrink-0"></div>
+                            <div class="h-3 w-16 bg-[#1e2d4a]/80 rounded-md"></div>
+                        </div>
+                        <div class="h-3 w-4 bg-[#1e2d4a]/80 rounded-md"></div>
+                        <div class="flex items-center justify-end space-x-3 w-[45%]">
+                            <div class="h-3 w-16 bg-[#1e2d4a]/80 rounded-md"></div>
+                            <div class="w-10 h-10 rounded-full bg-[#1e2d4a]/80 shrink-0"></div>
+                        </div>
+                    </div>
+                    <div class="border-t border-[#1a263d]/50 mt-3 pt-3 flex justify-between items-center">
+                        <div class="h-4 w-14 bg-[#1e2d4a]/80 rounded-md"></div>
+                        <div class="h-6 w-16 bg-[#1e2d4a]/80 rounded-lg"></div>
+                    </div>
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function showChannelsSkeletons() {
+            const container = document.getElementById('categoriesContainer');
+            if (!container) return;
+            let html = '';
+            // Render 2 category loader structures with grids
+            const dummyCats = ["SPORTS LIVE", "ENTERTAINMENT"];
+            dummyCats.forEach(cat => {
+                html += `
+                <div class="animate-pulse space-y-3">
+                    <div class="h-3 w-28 bg-[#1e2d4a]/80 rounded-md"></div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-[#0c1424] border border-[#1a263d] rounded-2xl p-3 flex flex-col items-center justify-between aspect-square">
+                            <div class="w-10 h-10 rounded-xl bg-[#1e2d4a]/80"></div>
+                            <div class="h-2 w-12 bg-[#1e2d4a]/80 rounded-md mt-2"></div>
+                            <div class="h-2 w-8 bg-[#1e2d4a]/80 rounded-md"></div>
+                        </div>
+                        <div class="bg-[#0c1424] border border-[#1a263d] rounded-2xl p-3 flex flex-col items-center justify-between aspect-square">
+                            <div class="w-10 h-10 rounded-xl bg-[#1e2d4a]/80"></div>
+                            <div class="h-2 w-12 bg-[#1e2d4a]/80 rounded-md mt-2"></div>
+                            <div class="h-2 w-8 bg-[#1e2d4a]/80 rounded-md"></div>
+                        </div>
+                        <div class="bg-[#0c1424] border border-[#1a263d] rounded-2xl p-3 flex flex-col items-center justify-between aspect-square">
+                            <div class="w-10 h-10 rounded-xl bg-[#1e2d4a]/80"></div>
+                            <div class="h-2 w-12 bg-[#1e2d4a]/80 rounded-md mt-2"></div>
+                            <div class="h-2 w-8 bg-[#1e2d4a]/80 rounded-md"></div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function showHighlightsSkeletons() {
+            const container = document.getElementById('highlightsContainer');
+            if (!container) return;
+            let html = '';
+            for (let i = 0; i < 3; i++) {
+                html += `
+                <div class="animate-pulse bg-[#0c1424] border border-[#1a263d] rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center space-x-1.5">
+                            <div class="h-3 w-3 bg-[#1e2d4a]/80 rounded-full"></div>
+                            <div class="h-3 w-32 bg-[#1e2d4a]/80 rounded-md"></div>
+                        </div>
+                        <div class="h-3 w-12 bg-[#1e2d4a]/80 rounded-md"></div>
+                    </div>
+                    <div class="flex justify-between items-center py-1">
+                        <div class="h-4 w-20 bg-[#1e2d4a]/80 rounded-md"></div>
+                        <div class="h-3 w-4 bg-[#1e2d4a]/80 rounded-md"></div>
+                        <div class="h-4 w-20 bg-[#1e2d4a]/80 rounded-md"></div>
+                    </div>
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function getSubscribedMatches() {
+            try {
+                const stored = localStorage.getItem('subscribed_matches');
+                return stored ? JSON.parse(stored) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function toggleMatchSubscription(matchId, e) {
+            if (e) {
+                e.stopPropagation();
+            }
+            try {
+                let subs = getSubscribedMatches();
+                const idx = subs.indexOf(matchId);
+                if (idx > -1) {
+                    subs.splice(idx, 1);
+                    showNotification("Notification alert removed.");
+                } else {
+                    subs.push(matchId);
+                    showNotification("Notification alert set successfully! We will notify you when this match goes live.");
+                }
+                localStorage.setItem('subscribed_matches', JSON.stringify(subs));
+                renderMatches();
+            } catch (e) {
+                console.error("Error toggling subscription", e);
+            }
+        }
+
+        function getApiUrl(path) {
+            let url = path;
+            if (useCacheBuster) {
+                url += (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+            }
+            return url;
+        }
+
+        let hlsPlayer = null;
+        let currentStreams = [];
+        let currentStreamIndex = 0;
+        let currentPlayingTitle = "";
+
+        let adSettings = null;
+        let userCountryCode = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkMaintenanceStatus();
+            fetchMatches();
+            fetchChannels();
+            fetchHighlights();
+            initAdsSystem();
+            setInterval(checkMaintenanceStatus, 15000); // Check every 15 seconds for updates
+        });
+
+        async function checkMaintenanceStatus() {
+            try {
+                const res = await fetch(getApiUrl('/api/maintenance'));
+                const data = await res.json();
+                const overlay = document.getElementById('maintenanceOverlay');
+                const msgEl = document.getElementById('maintenanceNoticeMessage');
+                if (data && data.enabled) {
+                    if (msgEl) msgEl.innerText = data.message || "We are currently performing scheduled server maintenance. We'll be back shortly!";
+                    if (overlay) overlay.classList.remove('hidden');
+                } else {
+                    if (overlay) overlay.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error("Error checking maintenance status:", e);
+            }
+        }
+
+        async function forceSyncData() {
+            const syncIcon = document.getElementById('syncIcon');
+            const syncBtn = document.getElementById('forceSyncBtn');
+            if (syncIcon) syncIcon.classList.add('animate-spin');
+            if (syncBtn) syncBtn.disabled = true;
+
+            try {
+                useCacheBuster = true;
+                await Promise.all([
+                    fetchMatches(),
+                    fetchChannels(),
+                    fetchHighlights(),
+                    initAdsSystem()
+                ]);
+
+                showNotification("All matches, channels, and highlights hard-refetched and synchronized!");
+            } catch (e) {
+                console.error("Force Sync Error:", e);
+                showNotification("Sync failed: " + e.message);
+            } finally {
+                useCacheBuster = false;
+                if (syncIcon) syncIcon.classList.remove('animate-spin');
+                if (syncBtn) syncBtn.disabled = false;
+            }
+        }
+
+        function showNotification(message) {
+            const toast = document.getElementById('toastAlert');
+            if (!toast) return;
+            toast.innerText = message;
+            toast.classList.remove('opacity-0', 'scale-90');
+            toast.classList.add('opacity-100', 'scale-100');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-90');
+                toast.classList.remove('opacity-100', 'scale-100');
+            }, 3000);
+        }
+
+        async function initAdsSystem() {
+            try {
+                // 1. Detect user country code via reliable geolocation API
+                try {
+                    const countryRes = await fetch('https://ipapi.co/json/');
+                    if (countryRes.ok) {
+                        const countryData = await countryRes.json();
+                        if (countryData && countryData.country_code) {
+                            userCountryCode = countryData.country_code.toUpperCase();
+                            console.log("Detected User Country Code:", userCountryCode);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Failed to retrieve user country from ipapi.co. Falling back to default.");
+                }
+
+                // 2. Fetch enterprise ad settings
+                const res = await fetch(getApiUrl('/api/ads-settings'));
+                adSettings = await res.json();
+                console.log("Loaded Enterprise Ads Settings:", adSettings);
+
+                // 3. Verify global ad server status
+                if (!adSettings || !adSettings.enabled) {
+                    console.log("Ad server is globally PAUSED.");
+                    document.getElementById('webBannerAdContainer').classList.add('hidden');
+                    return;
+                }
+
+                // 4. Verify geo-targeting rules
+                if (adSettings.targeting === 'country' && adSettings.targetCountries && adSettings.targetCountries.length > 0) {
+                    // Check if detected country code is listed
+                    const isTargeted = adSettings.targetCountries.some(c => c.trim().toUpperCase() === userCountryCode);
+                    if (!isTargeted) {
+                        console.log(`Visitor from [${userCountryCode}] is not targeted. Disabling all ads.`);
+                        document.getElementById('webBannerAdContainer').classList.add('hidden');
+                        return;
+                    }
+                }
+
+                // 5. Trigger Startup / App Open Ad overlay if enabled
+                if (adSettings.appOpenAd && adSettings.appOpenAd.enabled) {
+                    showAppOpenAd(adSettings.appOpenAd);
+                }
+
+                // 6. Display legacy banner ad if active
+                if (adSettings.bannerAd && adSettings.bannerAd.enabled) {
+                    renderLegacyBannerAd(adSettings.bannerAd);
+                } else {
+                    document.getElementById('webBannerAdContainer').classList.add('hidden');
+                }
+
+            } catch (err) {
+                console.error("Ad System initialization error:", err);
+            }
+        }
+
+        function showAppOpenAd(ad) {
+            const overlay = document.getElementById('appOpenAdOverlay');
+            const img = document.getElementById('appOpenAdImage');
+            const video = document.getElementById('appOpenAdVideo');
+            const iframe = document.getElementById('appOpenAdIframe');
+            const link = document.getElementById('appOpenAdLink');
+            const skipBtn = document.getElementById('appOpenSkipBtn');
+
+            if (!overlay || !ad || !ad.mediaUrl) return;
+
+            link.href = ad.clickUrl ? getApiUrl(`/api/analytics/track-ad-click?id=app-open&url=${encodeURIComponent(ad.clickUrl)}`) : '#';
+            
+            img.classList.add('hidden');
+            video.classList.add('hidden');
+            iframe.classList.add('hidden');
+
+            if (ad.mediaType === 'video') {
+                video.src = ad.mediaUrl;
+                video.classList.remove('hidden');
+                video.play().catch(e => console.log("Auto-play blocked for video ad:", e));
+            } else if (ad.mediaType === 'html5') {
+                iframe.src = ad.mediaUrl;
+                iframe.classList.remove('hidden');
+            } else {
+                img.src = ad.mediaUrl;
+                img.classList.remove('hidden');
+            }
+
+            overlay.classList.remove('hidden');
+
+            let countdown = ad.minTimeBound || 0;
+            skipBtn.disabled = true;
+
+            const finishAd = () => {
+                overlay.classList.add('hidden');
+                try { video.pause(); } catch(e){}
+            };
+
+            if (countdown > 0) {
+                skipBtn.innerText = `Skip in ${countdown}s`;
+                const timer = setInterval(() => {
+                    countdown--;
+                    if (countdown <= 0) {
+                        clearInterval(timer);
+                        skipBtn.disabled = false;
+                        skipBtn.innerText = "Skip Ad ➜";
+                        skipBtn.onclick = finishAd;
+                        if (!ad.allowSkip) {
+                            // Enforce mandatory close after duration if manual skip was disabled
+                            finishAd();
+                        }
+                    } else {
+                        skipBtn.innerText = `Skip in ${countdown}s`;
+                    }
+                }, 1000);
+            } else {
+                skipBtn.disabled = false;
+                skipBtn.innerText = "Skip Ad ➜";
+                skipBtn.onclick = finishAd;
+            }
+        }
+
+        function renderLegacyBannerAd(ad) {
+            const container = document.getElementById('webBannerAdContainer');
+            const img = document.getElementById('webBannerImage');
+            const video = document.getElementById('webBannerVideo');
+            const link = document.getElementById('webBannerAdLink');
+
+            if (!container || !ad || !ad.mediaUrl) return;
+
+            link.href = ad.clickUrl ? getApiUrl(`/api/analytics/track-ad-click?id=below-player&url=${encodeURIComponent(ad.clickUrl)}`) : '#';
+            img.classList.add('hidden');
+            video.classList.add('hidden');
+
+            if (ad.mediaType === 'video') {
+                video.src = ad.mediaUrl;
+                video.classList.remove('hidden');
+                video.play().catch(e => {});
+            } else {
+                img.src = ad.mediaUrl;
+                img.classList.remove('hidden');
+            }
+            container.classList.remove('hidden');
+        }
+
+        function checkAndShowPreRollAd(onAdComplete) {
+            if (!adSettings || !adSettings.enabled) {
+                onAdComplete();
+                return;
+            }
+
+            // Verify country targeting
+            if (adSettings.targeting === 'country' && adSettings.targetCountries && adSettings.targetCountries.length > 0) {
+                const match = adSettings.targetCountries.some(c => c.trim().toUpperCase() === userCountryCode);
+                if (!match) {
+                    onAdComplete();
+                    return;
+                }
+            }
+
+            const preRoll = adSettings.streamPreRollAd;
+            if (!preRoll || !preRoll.enabled || !preRoll.mediaUrl) {
+                onAdComplete();
+                return;
+            }
+
+            const overlay = document.getElementById('preRollAdOverlay');
+            const img = document.getElementById('preRollAdImage');
+            const video = document.getElementById('preRollAdVideo');
+            const iframe = document.getElementById('preRollAdIframe');
+            const link = document.getElementById('preRollAdLink');
+            const skipBtn = document.getElementById('preRollSkipBtn');
+
+            if (!overlay) {
+                onAdComplete();
+                return;
+            }
+
+            link.href = preRoll.clickUrl ? getApiUrl(`/api/analytics/track-ad-click?id=pre-roll&url=${encodeURIComponent(preRoll.clickUrl)}`) : '#';
+            img.classList.add('hidden');
+            video.classList.add('hidden');
+            iframe.classList.add('hidden');
+
+            if (preRoll.mediaType === 'video') {
+                video.src = preRoll.mediaUrl;
+                video.classList.remove('hidden');
+                video.play().catch(e => console.log(e));
+            } else if (preRoll.mediaType === 'html5') {
+                iframe.src = preRoll.mediaUrl;
+                iframe.classList.remove('hidden');
+            } else {
+                img.src = preRoll.mediaUrl;
+                img.classList.remove('hidden');
+            }
+
+            overlay.classList.remove('hidden');
+
+            let countdown = preRoll.minTimeBound || 0;
+            skipBtn.disabled = true;
+
+            const finishAd = () => {
+                overlay.classList.add('hidden');
+                try { video.pause(); } catch(e){}
+                onAdComplete();
+            };
+
+            if (countdown > 0) {
+                skipBtn.innerText = `Skip in ${countdown}s`;
+                const timer = setInterval(() => {
+                    countdown--;
+                    if (countdown <= 0) {
+                        clearInterval(timer);
+                        skipBtn.disabled = false;
+                        skipBtn.innerText = "Skip Ad ➜";
+                        skipBtn.onclick = finishAd;
+                        if (!preRoll.allowSkip) {
+                            // Automatically proceed if skip button disabled
+                            finishAd();
+                        }
+                    } else {
+                        skipBtn.innerText = `Skip in ${countdown}s`;
+                    }
+                }, 1000);
+            } else {
+                skipBtn.disabled = false;
+                skipBtn.innerText = "Skip Ad ➜";
+                skipBtn.onclick = finishAd;
+            }
+        }
+
+        function showMinimizePopupAd() {
+            if (!adSettings || !adSettings.enabled) return;
+
+            // Verify country targeting
+            if (adSettings.targeting === 'country' && adSettings.targetCountries && adSettings.targetCountries.length > 0) {
+                const match = adSettings.targetCountries.some(c => c.trim().toUpperCase() === userCountryCode);
+                if (!match) return;
+            }
+
+            const popup = adSettings.minimizePopupAd;
+            if (!popup || !popup.enabled || !popup.mediaUrl) return;
+
+            const container = document.getElementById('minimizePopupAdContainer');
+            const img = document.getElementById('minimizePopupAdImage');
+            const video = document.getElementById('minimizePopupAdVideo');
+            const link = document.getElementById('minimizePopupAdLink');
+
+            if (!container) return;
+
+            link.href = popup.clickUrl ? getApiUrl(`/api/analytics/track-ad-click?id=minimize-popup&url=${encodeURIComponent(popup.clickUrl)}`) : '#';
+            img.classList.add('hidden');
+            video.classList.add('hidden');
+
+            if (popup.mediaType === 'video') {
+                video.src = popup.mediaUrl;
+                video.classList.remove('hidden');
+                video.play().catch(e => {});
+            } else {
+                img.src = popup.mediaUrl;
+                img.classList.remove('hidden');
+            }
+
+            container.classList.remove('hidden');
+        }
+
+        function closeMinimizePopupAd() {
+            const container = document.getElementById('minimizePopupAdContainer');
+            if (container) {
+                container.classList.add('hidden');
+                const video = document.getElementById('minimizePopupAdVideo');
+                if (video) {
+                    try { video.pause(); } catch(e){}
+                }
+            }
+        }
+
+        // Toggle left drawer menu
+        function toggleDrawer(open) {
+            const drawer = document.getElementById('drawerMenu');
+            const backdrop = document.getElementById('drawerBackdrop');
+            if (open) {
+                backdrop.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.add('opacity-100');
+                    drawer.classList.remove('-translate-x-full');
+                }, 10);
+            } else {
+                drawer.classList.add('-translate-x-full');
+                backdrop.classList.remove('opacity-100');
+                setTimeout(() => {
+                    backdrop.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        // Show toast notifications inside drawer / buttons
+        function showDrawerToast(message) {
+            const toast = document.getElementById('toastAlert');
+            toast.innerText = message + " is built in the Android App! Install the APK above.";
+            toast.classList.remove('opacity-0', 'scale-90');
+            toast.classList.add('opacity-100', 'scale-100');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-90');
+                toast.classList.remove('opacity-100', 'scale-100');
+            }, 3000);
+            toggleDrawer(false);
+        }
+
+        // Search Bar toggles
+        function toggleSearch() {
+            const bar = document.getElementById('searchBar');
+            bar.classList.toggle('hidden');
+            if (!bar.classList.contains('hidden')) {
+                document.getElementById('searchInput').focus();
+            }
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            handleSearch();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+            renderMatches();
+            renderCategories();
+            renderHighlights();
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            activeTab = tabId;
+            ['home', 'categories', 'highlights'].forEach(id => {
+                const content = document.getElementById('tabContent-' + id);
+                const btn = document.getElementById('btnTab-' + id);
+                if (id === tabId) {
+                    content.classList.remove('hidden');
+                    btn.classList.add('active-tab');
+                } else {
+                    content.classList.add('hidden');
+                    btn.classList.remove('active-tab');
+                }
+            });
+            // Scroll to top
+            document.getElementById('appContent').scrollTop = 0;
+        }
+
+        // API Fetching
+        async function fetchMatches() {
+            showMatchesSkeletons();
+            try {
+                const res = await fetch(getApiUrl('/api/matches'));
+                allMatches = await res.json();
+                updateCategoryBadges();
+                renderMatches();
+            } catch (e) { console.error("Error matches", e); }
+        }
+
+        async function fetchChannels() {
+            showChannelsSkeletons();
+            try {
+                const res = await fetch(getApiUrl('/api/channels'));
+                allChannels = await res.json();
+                renderCategories();
+            } catch (e) { console.error("Error channels", e); }
+        }
+
+        async function fetchHighlights() {
+            showHighlightsSkeletons();
+            try {
+                const res = await fetch(getApiUrl('/api/highlights'));
+                allHighlights = await res.json();
+                renderHighlights();
+            } catch (e) { console.error("Error highlights", e); }
+        }
+
+        // Update counts on horizontal scroll circles
+        function updateCategoryBadges() {
+            const categories = ['All', 'Cricket', 'Football', 'MotorSports', 'Wrestling'];
+            categories.forEach(sport => {
+                const badge = document.getElementById('badge-' + sport);
+                let count = 0;
+                if (sport === 'All') {
+                    count = allMatches.length;
+                } else {
+                    count = allMatches.filter(m => m.sport.toLowerCase() === sport.toLowerCase()).length;
+                }
+                if (badge) {
+                    if (count > 0) {
+                        badge.innerText = count;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        // Sport Filtering
+        function filterSport(sport) {
+            activeSport = sport;
+            const sportsList = ['All', 'Cricket', 'Football', 'MotorSports', 'Wrestling'];
+            sportsList.forEach(s => {
+                const circle = document.getElementById('circle-' + s);
+                const label = document.getElementById('label-' + s);
+                if (s === sport) {
+                    circle.classList.add('active');
+                    label.classList.add('text-cyan-400');
+                    label.classList.remove('text-gray-400');
+                    label.style.fontWeight = '700';
+                } else {
+                    circle.classList.remove('active');
+                    label.classList.remove('text-cyan-400');
+                    label.classList.add('text-gray-400');
+                    label.style.fontWeight = '600';
+                }
+            });
+            renderMatches();
+        }
+
+        // Status Filtering
+        function filterStatus(status) {
+            activeStatus = status;
+            const statuses = ['Recent', 'Live', 'Upcoming', 'All'];
+            statuses.forEach(s => {
+                const pill = document.getElementById('pill-' + s);
+                if (s === status) {
+                    pill.className = "px-4 py-1.5 bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/40 text-xs font-extrabold rounded-full transition shrink-0";
+                } else {
+                    pill.className = "px-4 py-1.5 bg-[#0f172a] hover:bg-[#1e2d4a] text-xs font-semibold rounded-full border border-transparent text-gray-400 transition shrink-0";
+                }
+            });
+            renderMatches();
+        }
+
+        // Render functions
+        function renderMatches() {
+            const container = document.getElementById('matchesContainer');
+            container.innerHTML = '';
+
+            // 1. Filter by active sport
+            let filtered = activeSport === 'All' 
+                ? allMatches 
+                : allMatches.filter(m => m.sport.toLowerCase() === activeSport.toLowerCase());
+
+            // 2. Filter by status
+            if (activeStatus !== 'All') {
+                filtered = filtered.filter(m => {
+                    const status = m.status.toLowerCase();
+                    if (activeStatus === 'Live') return status === 'live';
+                    if (activeStatus === 'Recent') return status === 'completed' || status === 'ended';
+                    if (activeStatus === 'Upcoming') return status !== 'live' && status !== 'completed' && status !== 'ended';
+                    return true;
+                });
+            }
+
+            // 3. Filter by search query
+            if (searchQuery) {
+                filtered = filtered.filter(m => 
+                    m.title.toLowerCase().includes(searchQuery) ||
+                    m.sport.toLowerCase().includes(searchQuery) ||
+                    m.team1Name.toLowerCase().includes(searchQuery) ||
+                    m.team2Name.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="py-12 text-center text-gray-500">' +
+                    '<i class="fa-solid fa-circle-info text-2xl mb-2 text-cyan-500/50"></i>' +
+                    '<p class="text-xs font-semibold">No matches match your criteria.</p>' +
+                '</div>';
+                return;
+            }
+
+            filtered.forEach(match => {
+                const isLive = match.status.toLowerCase() === 'live';
+
+                const timeHtml = isLive 
+                    ? '<span class="text-[#00E5FF] text-[10px] font-bold">03:54:23</span>' 
+                    : '<span class="text-[#00E5FF] text-[10px] font-semibold">' + match.time + '</span>';
+
+                const badgeHtml = isLive 
+                    ? '<span class="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md flex items-center space-x-1 animate-pulse"><span class="w-1.5 h-1.5 rounded-full bg-white"></span><span>LIVE</span></span>' 
+                    : '<span class="bg-gray-700 text-gray-300 text-[9px] font-bold px-2 py-0.5 rounded-md">UPCOMING</span>';
+
+                const card = document.createElement('div');
+                card.className = "bg-[#0c1424] border border-[#1a263d] rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-[#00e5ff]/50 transition duration-300 shadow-md";
+                card.onclick = () => playStream(match.streamUrl, match.team1Name + " vs " + match.team2Name + " - " + match.title);
+
+                // Construct teams badges with initials
+                const t1Initial = match.team1Name.substring(0, 3).toUpperCase();
+                const t2Initial = match.team2Name.substring(0, 3).toUpperCase();
+
+                // Check subscription status
+                const subs = getSubscribedMatches();
+                const isSubscribed = subs.includes(match.id);
+                const subButtonHtml = isSubscribed 
+                    ? `<button onclick="toggleMatchSubscription(${match.id}, event)" class="flex items-center space-x-1.5 bg-[#00E5FF]/20 hover:bg-[#00E5FF]/30 text-[#00E5FF] border border-[#00E5FF]/40 px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition duration-200">
+                        <i class="fa-solid fa-bell-slash"></i>
+                        <span>Alert Set</span>
+                       </button>`
+                    : `<button onclick="toggleMatchSubscription(${match.id}, event)" class="flex items-center space-x-1.5 bg-[#0f172a] hover:bg-[#1e2d4a] text-gray-400 border border-transparent hover:border-gray-700 px-3 py-1.5 rounded-xl text-[10px] font-bold transition duration-200">
+                        <i class="fa-regular fa-bell"></i>
+                        <span>Subscribe</span>
+                       </button>`;
+
+                card.innerHTML = '<div class="flex justify-between items-center mb-3">' +
+                    '<span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">' + match.sport + ' || ' + match.title + '</span>' +
+                    '<div class="flex items-center space-x-2">' +
+                        timeHtml +
+                        badgeHtml +
+                    '</div>' +
+                '</div>' +
+                '<div class="flex items-center justify-between py-2 px-1">' +
+                    '<div class="flex items-center space-x-3 w-[45%]">' +
+                        '<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white text-xs font-black border border-cyan-400/20 shrink-0 shadow-inner">' +
+                            '<span class="text-[10px]">' + t1Initial + '</span>' +
+                        '</div>' +
+                        '<span class="text-xs font-bold text-white truncate">' + match.team1Name + '</span>' +
+                    '</div>' +
+                    '<span class="text-[11px] font-extrabold text-gray-500 tracking-wider">VS</span>' +
+                    '<div class="flex items-center justify-end space-x-3 w-[45%] text-right">' +
+                        '<span class="text-xs font-bold text-white truncate">' + match.team2Name + '</span>' +
+                        '<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-600 to-red-600 flex items-center justify-center text-white text-xs font-black border border-red-400/20 shrink-0 shadow-inner">' +
+                            '<span class="text-[10px]">' + t2Initial + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="border-t border-[#1a263d]/50 mt-3 pt-3 flex justify-between items-center">' +
+                    '<span class="text-[9px] text-gray-400 font-bold uppercase bg-slate-900/50 px-2 py-1 rounded-md border border-[#1a263d]">' + match.sport + '</span>' +
+                    subButtonHtml +
+                '</div>';
+                container.appendChild(card);
+            });
+        }
+
+        // Render Live TV categories
+        function renderCategories() {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = '';
+
+            // Group channels by category
+            const categories = {};
+            allChannels.forEach(ch => {
+                const cat = ch.category || 'GENERAL';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(ch);
+            });
+
+            const categoryNames = Object.keys(categories);
+            if (categoryNames.length === 0) {
+                container.innerHTML = '<div class="py-12 text-center text-gray-500">' +
+                    '<i class="fa-solid fa-tv text-2xl mb-2 text-cyan-500/50"></i>' +
+                    '<p class="text-xs font-semibold">No categories registered yet.</p>' +
+                '</div>';
+                return;
+            }
+
+            categoryNames.forEach(catName => {
+                let channelsList = categories[catName];
+                if (searchQuery) {
+                    channelsList = channelsList.filter(c => c.name.toLowerCase().includes(searchQuery));
+                }
+                if (channelsList.length === 0) return;
+
+                const section = document.createElement('div');
+                section.className = "space-y-3";
+
+                section.innerHTML = '<h3 class="text-xs font-black text-[#00E5FF] uppercase tracking-widest">' + catName + '</h3>';
+
+                const grid = document.createElement('div');
+                grid.className = "grid grid-cols-3 gap-3";
+
+                channelsList.forEach(ch => {
+                    const card = document.createElement('div');
+                    card.className = "bg-[#0c1424] border border-[#1a263d] rounded-2xl p-3 flex flex-col items-center justify-between text-center cursor-pointer hover:border-[#00e5ff]/50 transition duration-300 aspect-square shadow-sm";
+                    card.onclick = () => playStream(ch.streamUrl, ch.name);
+
+                    // First two letters of name
+                    const prefix = ch.name.substring(0, 2).toUpperCase();
+
+                    card.innerHTML = '<div class="w-10 h-10 rounded-xl bg-[#080c14] border border-[#1a263d] flex items-center justify-center shrink-0 shadow-inner">' +
+                        '<span class="text-cyan-400 font-extrabold text-xs tracking-wider">' + prefix + '</span>' +
+                    '</div>' +
+                    '<div class="text-[10px] font-bold text-white line-clamp-2 leading-tight px-0.5">' + ch.name + '</div>' +
+                    '<div class="flex items-center space-x-1">' +
+                        '<span class="live-pulse-dot"></span>' +
+                        '<span class="text-[8px] font-black text-red-500 uppercase tracking-widest">LIVE</span>' +
+                    '</div>';
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+        }
+
+        // Render Highlights Screen
+        function renderHighlights() {
+            const container = document.getElementById('highlightsContainer');
+            container.innerHTML = '';
+
+            let filtered = allHighlights;
+            if (searchQuery) {
+                filtered = allHighlights.filter(hl => 
+                    hl.title.toLowerCase().includes(searchQuery) ||
+                    hl.team1Name.toLowerCase().includes(searchQuery) ||
+                    hl.team2Name.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="py-12 text-center text-gray-500">' +
+                    '<i class="fa-solid fa-clapperboard text-2xl mb-2 text-cyan-500/50"></i>' +
+                    '<p class="text-xs font-semibold">No highlights clip match your search.</p>' +
+                '</div>';
+                return;
+            }
+
+            filtered.forEach(hl => {
+                const card = document.createElement('div');
+                card.className = "bg-[#0c1424] border border-[#1a263d] rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-[#00e5ff]/50 transition duration-300 shadow-md";
+                card.onclick = () => playStream(hl.streamUrl, hl.team1Name + " vs " + hl.team2Name + " Highlights");
+
+                card.innerHTML = '<div class="flex justify-between items-center mb-2">' +
+                    '<div class="flex items-center space-x-1.5">' +
+                        '<i class="fa-solid fa-star text-cyan-400 text-xs"></i>' +
+                        '<span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">' + (hl.title || 'Football | Match Highlight') + '</span>' +
+                    '</div>' +
+                    '<span class="text-[9px] font-semibold text-gray-500">' + (hl.date || 'Today') + '</span>' +
+                '</div>' +
+                '<div class="flex justify-between items-center py-1">' +
+                    '<span class="text-xs font-extrabold text-white truncate max-w-[150px]">' + hl.team1Name + '</span>' +
+                    '<span class="text-[10px] font-black text-rose-500">VS</span>' +
+                    '<span class="text-xs font-extrabold text-white truncate max-w-[150px] text-right">' + hl.team2Name + '</span>' +
+                '</div>';
+                container.appendChild(card);
+            });
+        }
+
+        let currentWatchingStreamName = null;
+        let currentWatchingStreamType = null;
+
+        async function trackStreamViewAnalytics(type, name) {
+            try {
+                let id = 1;
+                if (type === 'channel' && typeof allChannels !== 'undefined') {
+                    const found = allChannels.find(c => c.name === name);
+                    if (found) id = found.id;
+                } else if (type === 'match' && typeof allMatches !== 'undefined') {
+                    const found = allMatches.find(m => m.title === name);
+                    if (found) id = found.id;
+                }
+
+                currentWatchingStreamName = name;
+                currentWatchingStreamType = type;
+
+                await fetch(getApiUrl('/api/analytics/track-view'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, id, name })
+                });
+            } catch (e) {
+                console.error("Error logging view analytics:", e);
+            }
+        }
+
+        function sendWebUserHeartbeat() {
+            let watching = null;
+            if (currentWatchingStreamName) {
+                watching = {
+                    type: currentWatchingStreamType || 'channel',
+                    name: currentWatchingStreamName
+                };
+            }
+            fetch(getApiUrl('/api/analytics/heartbeat'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    source: 'web-app',
+                    page: 'web-app-home',
+                    watching: watching
+                })
+            }).catch(e => console.log("Web user heartbeat error:", e));
+        }
+
+        // Telemetry Error Reporting helper
+        function reportStreamError(url, title, errorDetails) {
+            const ch = typeof allChannels !== 'undefined' ? allChannels.find(c => c.streamUrl === url || c.name === title) : null;
+            const body = {
+                channelId: ch ? ch.id : null,
+                channelName: ch ? ch.name : title,
+                streamUrl: url,
+                error: errorDetails || "Playback failure"
+            };
+            fetch(getApiUrl('/api/stream-report'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => console.log("Stream failure reported successfully:", data))
+            .catch(err => console.error("Failed to report stream error:", err));
+        }
+
+        // Play stream function
+        function playStream(url, title) {
+            if (!url) {
+                alert("Invalid stream URL!");
+                return;
+            }
+
+            // Log stream click/view to analytics
+            let type = 'channel';
+            if (title.toLowerCase().includes('match') || title.toLowerCase().includes('vs')) {
+                type = 'match';
+            }
+            trackStreamViewAnalytics(type, title);
+
+            document.getElementById('nowPlayingTitle').innerText = title;
+            const playerSec = document.getElementById('playerSection');
+            playerSec.classList.remove('hidden');
+            playerSec.classList.remove('floating-player');
+            
+            // Remove any existing placeholder
+            const placeholder = document.getElementById('playerPlaceholder');
+            if (placeholder) {
+                placeholder.remove();
+            }
+
+            // Scroll parent page content smoothly to top so player is docked and fully visible
+            const appContent = document.getElementById('appContent');
+            if (appContent) {
+                appContent.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            const video = document.getElementById('videoElement');
+            const iframe = document.getElementById('iframeElement');
+            const loading = document.getElementById('playerLoading');
+
+            loading.classList.remove('hidden');
+
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+
+            try { video.pause(); } catch(e){}
+            video.src = "";
+            video.classList.add('hidden');
+
+            iframe.src = "";
+            iframe.classList.add('hidden');
+
+            // Find if this is a channel and get backup streams
+            const ch = typeof allChannels !== 'undefined' ? allChannels.find(c => c.streamUrl === url || c.name === title) : null;
+            currentStreams = [];
+            if (ch) {
+                if (ch.streamUrl) currentStreams.push({ label: 'Primary Stream', url: ch.streamUrl });
+                if (ch.streamUrl2) currentStreams.push({ label: 'Backup Stream 2', url: ch.streamUrl2 });
+                if (ch.streamUrl3) currentStreams.push({ label: 'Backup Stream 3', url: ch.streamUrl3 });
+                if (ch.streamUrl4) currentStreams.push({ label: 'Backup Stream 4', url: ch.streamUrl4 });
+                if (ch.streamUrl5) currentStreams.push({ label: 'Backup Stream 5', url: ch.streamUrl5 });
+            } else {
+                currentStreams.push({ label: 'Primary Stream', url: url });
+            }
+            currentStreamIndex = 0;
+            currentPlayingTitle = title;
+
+            // Handle Smart Fallback UI visibility
+            const fallbackContainer = document.getElementById('smartFallbackContainer');
+            const fallbackLabel = document.getElementById('currentStreamLabel');
+            if (fallbackContainer && fallbackLabel) {
+                if (currentStreams.length > 1) {
+                    fallbackLabel.innerText = 'Primary Stream';
+                    fallbackContainer.classList.remove('hidden');
+                    fallbackContainer.classList.add('flex');
+                } else {
+                    fallbackContainer.classList.add('hidden');
+                    fallbackContainer.classList.remove('flex');
+                }
+            }
+
+            // Cleanly close and reset any previous ad elements
+            document.getElementById('preRollAdOverlay').classList.add('hidden');
+            closeMinimizePopupAd();
+
+            // Run Pre-roll flow first, then load actual stream URL!
+            checkAndShowPreRollAd(() => {
+                loadActualStream(url, video, iframe, loading);
+                showMinimizePopupAd();
+            });
+        }
+
+        // Cycle fallback stream
+        function cycleFallbackStream() {
+            if (currentStreams.length <= 1) return;
+
+            currentStreamIndex = (currentStreamIndex + 1) % currentStreams.length;
+            const nextStream = currentStreams[currentStreamIndex];
+
+            const video = document.getElementById('videoElement');
+            const iframe = document.getElementById('iframeElement');
+            const loading = document.getElementById('playerLoading');
+
+            const fallbackLabel = document.getElementById('currentStreamLabel');
+            if (fallbackLabel) {
+                fallbackLabel.innerText = nextStream.label;
+            }
+
+            loading.classList.remove('hidden');
+
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+
+            try { video.pause(); } catch(e){}
+            video.src = "";
+            video.classList.add('hidden');
+
+            iframe.src = "";
+            iframe.classList.add('hidden');
+
+            // Switch to the backup stream URL
+            loadActualStream(nextStream.url, video, iframe, loading);
+            showNotification(`Switched to ${nextStream.label}! Loading...`);
+        }
+
+        function loadActualStream(url, video, iframe, loading) {
+            const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/;
+            const twitchRegex = /(?:twitch\.tv\/)([a-zA-Z0-9_-]+)/;
+            const facebookRegex = /(?:facebook\.com|fb\.watch)/;
+            const instagramRegex = /instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/;
+            const pinterestRegex = /pinterest\.[a-z.]+\/pin\/(\d+)/;
+            const tiktokRegex = /(?:tiktok\.com\/@[^\/]+\/video\/|tiktok\.com\/v\/)(\d+)/;
+            const twitterRegex = /(?:twitter\.com|x\.com)\/[a-zA-Z0-9_-]+\/status\/(\d+)/;
+            const vimeoRegex = /vimeo\.com\/(?:channels\/[^\/]+\/|groups\/[^\/]+\/|album\/[^\/]+\/video\/|showcase\/[^\/]+\/video\/)?(\d+)/;
+
+            const ytMatch = url.match(youtubeRegex);
+            const twitchMatch = url.match(twitchRegex);
+            const igMatch = url.match(instagramRegex);
+            const pinMatch = url.match(pinterestRegex);
+            const ttMatch = url.match(tiktokRegex);
+            const twMatch = url.match(twitterRegex);
+            const vimeoMatch = url.match(vimeoRegex);
+
+            if (ytMatch) {
+                const videoId = ytMatch[1];
+                iframe.src = "https://www.youtube.com/embed/" + videoId + "?autoplay=1&rel=0";
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else if (twitchMatch) {
+                const channelName = twitchMatch[1];
+                iframe.src = "https://player.twitch.tv/?channel=" + channelName + "&parent=" + window.location.hostname + "&autoplay=true";
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else if (facebookRegex.test(url)) {
+                // Facebook Embedded video player iframe helper
+                iframe.src = "https://www.facebook.com/plugins/video.php?href=" + encodeURIComponent(url) + "&show_text=0&autoplay=1";
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else if (igMatch) {
+                // Instagram post/reel embedded iframe helper
+                const cleanUrl = url.split('?')[0].replace(/\/$/, "");
+                iframe.src = cleanUrl + "/embed";
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else if (pinMatch) {
+                // Pinterest pin embedded widget iframe helper
+                const pinId = pinMatch[1];
+                iframe.src = "https://assets.pinterest.com/ext/embed.html?id=" + pinId;
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else if (ttMatch) {
+                // TikTok embedded video iframe helper
+                const videoId = ttMatch[1];
+                iframe.src = "https://www.tiktok.com/embed/v2/" + videoId;
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else if (twMatch) {
+                // Twitter / X embedded standalone video syndication widget helper
+                const tweetId = twMatch[1];
+                iframe.src = "https://syndication.twitter.com/srv/global-video-widget/?id=" + tweetId;
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else if (vimeoMatch) {
+                // Vimeo embedded player iframe helper
+                const vimeoId = vimeoMatch[1];
+                iframe.src = "https://player.vimeo.com/video/" + vimeoId + "?autoplay=1";
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else if (url.includes('/embed/') || url.includes('iframe') || url.includes('embed.twitch.tv')) {
+                iframe.src = url;
+                iframe.classList.remove('hidden');
+                loading.classList.add('hidden');
+            } else {
+                video.classList.remove('hidden');
+                if (Hls.isSupported() && url.endsWith('.m3u8')) {
+                    hlsPlayer = new Hls();
+                    hlsPlayer.loadSource(url);
+                    hlsPlayer.attachMedia(video);
+                    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                        loading.classList.add('hidden');
+                        video.play().catch(e => console.log('Autoplay blocked:', e));
+                    });
+                    hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
+                        loading.classList.add('hidden');
+                        if (data.fatal) {
+                            console.error("HLS fatal error:", data);
+                            reportStreamError(url, title, `HLS Error: ${data.type} (${data.details})`);
+                        }
+                    });
+                } else {
+                    video.src = url;
+                    video.onloadedmetadata = function() {
+                        loading.classList.add('hidden');
+                        video.play().catch(e => console.log('Autoplay blocked:', e));
+                    };
+                    video.onerror = function() {
+                        loading.classList.add('hidden');
+                        const err = video.error;
+                        let errMsg = "HTML5 playback error";
+                        if (err) {
+                            if (err.code === 1) errMsg = "Aborted";
+                            else if (err.code === 2) errMsg = "Network failure";
+                            else if (err.code === 3) errMsg = "Decode failure";
+                            else if (err.code === 4) errMsg = "Format not supported";
+                        }
+                        reportStreamError(url, title, errMsg);
+                    };
+                }
+            }
+        }
+
+        function closePlayer() {
+            currentWatchingStreamName = null;
+            currentWatchingStreamType = null;
+            const video = document.getElementById('videoElement');
+            const iframe = document.getElementById('iframeElement');
+            try { video.pause(); } catch(e){}
+            video.src = "";
+            iframe.src = "";
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+            const playerSec = document.getElementById('playerSection');
+            playerSec.classList.add('hidden');
+            playerSec.classList.remove('floating-player');
+            const placeholder = document.getElementById('playerPlaceholder');
+            if (placeholder) {
+                placeholder.remove();
+            }
+        }
+
+        // Auto-Float Media Player on page scroll
+        document.addEventListener('DOMContentLoaded', () => {
+            const appContent = document.getElementById('appContent');
+            const playerSection = document.getElementById('playerSection');
+
+            if (appContent && playerSection) {
+                appContent.addEventListener('scroll', () => {
+                    // Only float if the player is active and visible to start with
+                    if (!playerSection.classList.contains('hidden')) {
+                        if (appContent.scrollTop > 120) {
+                            if (!playerSection.classList.contains('floating-player')) {
+                                playerSection.classList.add('floating-player');
+                                // Insert a structural placeholder to prevent sudden layout shifting/jumping
+                                let placeholder = document.getElementById('playerPlaceholder');
+                                if (!placeholder) {
+                                    placeholder = document.createElement('div');
+                                    placeholder.id = 'playerPlaceholder';
+                                    placeholder.style.height = playerSection.offsetHeight + 'px';
+                                    placeholder.style.transition = 'all 0.3s ease';
+                                    playerSection.parentNode.insertBefore(placeholder, playerSection);
+                                }
+                            }
+                        } else {
+                            if (playerSection.classList.contains('floating-player')) {
+                                playerSection.classList.remove('floating-player');
+                                const placeholder = document.getElementById('playerPlaceholder');
+                                if (placeholder) {
+                                    placeholder.remove();
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        // Initialize user tracking and pings
+        setInterval(sendWebUserHeartbeat, 15000);
+        sendWebUserHeartbeat();
+    </script>
+</body>
+</html>

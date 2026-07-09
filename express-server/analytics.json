@@ -1,0 +1,39 @@
+{
+  "traffic": [
+    {
+      "ip": "127.0.0.1",
+      "ua": "curl/7.88.1",
+      "path": "/",
+      "timestamp": "2026-07-09T09:50:33.346Z"
+    },
+    {
+      "ip": "127.0.0.1",
+      "ua": "curl/7.88.1",
+      "path": "/",
+      "timestamp": "2026-07-09T09:50:37.548Z"
+    },
+    {
+      "ip": "127.0.0.1",
+      "ua": "curl/7.88.1",
+      "path": "/",
+      "timestamp": "2026-07-09T09:52:11.183Z"
+    },
+    {
+      "ip": "127.0.0.1",
+      "ua": "curl/7.88.1",
+      "path": "/",
+      "timestamp": "2026-07-09T09:52:15.304Z"
+    },
+    {
+      "ip": "127.0.0.1",
+      "ua": "curl/7.88.1",
+      "path": "/web-app/",
+      "timestamp": "2026-07-09T09:52:28.036Z"
+    }
+  ],
+  "channelViews": [],
+  "streamViews": [],
+  "appDownloads": [],
+  "appActiveUsers": [],
+  "adClicks": []
+}

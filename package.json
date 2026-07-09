@@ -1,0 +1,9 @@
+{
+  "name": "sportzfy-live-admin-root",
+  "version": "1.0.0",
+  "description": "Sportzfy Live Unified Express Admin Server",
+  "main": "express-server/server.js",
+  "scripts": {
+    "start": "node express-server/server.js"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Sportzfy Live",
+  "description": "Live sports streaming and TV app with a local admin web panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

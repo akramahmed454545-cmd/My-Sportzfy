@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Red/Pink shadow layer translated slightly down-right -->
+    <path
+        android:fillColor="#FF1744"
+        android:pathData="M56,32 C48,32 42,38 42,46 C42,54 50,58 60,60 C70,62 74,66 74,74 C74,82 66,88 56,88 C48,88 44,84 44,80 L50,76 C50,78 52,82 56,82 C62,82 68,78 68,74 C68,70 62,66 52,64 C42,62 36,56 36,46 C36,36 44,26 56,26 C64,26 70,30 70,34 L64,38 C64,36 60,32 56,32 Z" />
+
+    <!-- Neon cyan main letter S layer centered -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,30 C46,30 40,36 40,44 C40,52 48,56 58,58 C68,60 72,64 72,72 C72,80 64,86 54,86 C46,86 42,82 42,78 L48,74 C48,76 50,80 54,80 C60,80 66,76 66,72 C66,68 60,64 50,62 C40,60 34,54 34,44 C34,34 42,24 54,24 C62,24 68,28 68,32 L62,36 C62,34 58,30 54,30 Z" />
+
+</vector>
