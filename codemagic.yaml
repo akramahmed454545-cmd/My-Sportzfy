@@ -1,0 +1,14 @@
+workflows:
+  android-workflow:
+    name: Android APK Build
+    max_build_duration: 60
+
+    environment:
+      java: 17
+
+    scripts:
+      - chmod +x gradlew
+      - ./gradlew assembleRelease
+
+    artifacts:
+      - app/build/outputs/**/*.apk
