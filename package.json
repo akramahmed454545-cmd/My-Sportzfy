@@ -2,9 +2,9 @@
   "name": "sportzfy-live-admin-root",
   "version": "1.0.0",
   "description": "Sportzfy Live Unified Express Admin Server",
-  "main": "express-server/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node express-server/server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
