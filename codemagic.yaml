@@ -82,6 +82,3 @@ workflows:
       email:
         recipients:
           - akramahmed454545@gmail.com
-        notifying:
-          on_success: true
-          on_failure: true
