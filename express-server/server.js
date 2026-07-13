@@ -138,67 +138,9 @@ app.use((req, res, next) => {
     next();
 });
 
-// Lightweight In-Memory Rate Limiter and Scraper Prevention
-const ipRequestCounts = {};
-setInterval(() => {
-    // Clear rate limits every 60 seconds
-    for (const ip in ipRequestCounts) {
-        ipRequestCounts[ip].count = 0;
-    }
-}, 60000);
-
+// Lightweight In-Memory Rate Limiter and Scraper Prevention (Deactivated for maximum compatibility)
 app.use((req, res, next) => {
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const urlPath = req.path;
-
-    if (!ipRequestCounts[ip]) {
-        ipRequestCounts[ip] = { count: 0, blockedUntil: 0 };
-    }
-
-    if (Date.now() < ipRequestCounts[ip].blockedUntil) {
-        return res.status(429).json({
-            error: "Too Many Requests",
-            message: "Our security shields detected suspicious scraping activity from your IP. Access blocked temporarily."
-        });
-    }
-
-    ipRequestCounts[ip].count++;
-
-    // Limit to 120 API requests per minute (very safe but blocks heavy scraping/sniffing)
-    if (ipRequestCounts[ip].count > 120) {
-        ipRequestCounts[ip].blockedUntil = Date.now() + 10 * 60 * 1000; // Block for 10 minutes
-        console.warn(`[SECURITY DETECTED] Rate limit exceeded by IP: ${ip}. Blocked for 10 mins.`);
-        return res.status(429).json({
-            error: "Too Many Requests",
-            message: "Suspicious automated activity detected. Your IP has been temporarily blocked for security reasons."
-        });
-    }
-
-    // Anti-Scraping Shield: check custom signatures for APIs
-    if (urlPath.startsWith('/api/') && urlPath !== '/api/login' && urlPath !== '/api/logout') {
-        const userAgent = req.headers['user-agent'] || '';
-        const secureKey = req.headers['x-sportzfy-sec-key'];
-        
-        // Allowed client patterns:
-        // 1. Android App client
-        const isAndroidApp = userAgent.includes('SportzfySecureClient') || secureKey === 'sportzfy_bulletproof_android_sec_2026';
-        // 2. Web App / Admin browser client (must have referer containing /web-app or admin console, and not a command line tool like curl, python, etc.)
-        const isWebOrAdmin = req.headers['referer'] && 
-                             (req.headers['referer'].includes('/web-app') || req.headers['referer'].includes('/login.html') || req.headers['referer'].includes('/index.html') || req.headers['referer'].includes(req.headers['host'])) &&
-                             !userAgent.includes('curl') && 
-                             !userAgent.includes('Wget') && 
-                             !userAgent.includes('python-requests') && 
-                             !userAgent.includes('Postman');
-
-        if (!isAndroidApp && !isWebOrAdmin) {
-            console.warn(`[SECURITY DETECTED] Scraper/Sniffer blocked. IP: ${ip}, User-Agent: ${userAgent}`);
-            return res.status(403).json({
-                error: "Forbidden",
-                message: "Direct API scraping or headless data collection is blocked by Sportzfy Shields."
-            });
-        }
-    }
-
+    // Security shields deactivated to prevent false blocking on hosting environments and proxies.
     next();
 });
 
