@@ -21,6 +21,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +44,96 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.example.ui.viewmodel.PlayerEngine
 
+val FullscreenIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Fullscreen",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).path(
+        fill = SolidColor(Color.White),
+        stroke = null,
+        strokeLineWidth = 0f,
+        strokeLineCap = StrokeCap.Butt,
+        strokeLineJoin = StrokeJoin.Miter,
+        strokeLineMiter = 1f
+    ) {
+        moveTo(7f, 14f)
+        lineTo(5f, 14f)
+        lineTo(5f, 19f)
+        lineTo(10f, 19f)
+        lineTo(10f, 17f)
+        lineTo(7f, 17f)
+        close()
+        moveTo(5f, 10f)
+        lineTo(7f, 10f)
+        lineTo(7f, 7f)
+        lineTo(10f, 7f)
+        lineTo(10f, 5f)
+        lineTo(5f, 5f)
+        close()
+        moveTo(17f, 17f)
+        lineTo(14f, 17f)
+        lineTo(14f, 19f)
+        lineTo(19f, 19f)
+        lineTo(19f, 14f)
+        lineTo(17f, 14f)
+        close()
+        moveTo(14f, 5f)
+        lineTo(14f, 7f)
+        lineTo(17f, 7f)
+        lineTo(17f, 10f)
+        lineTo(19f, 10f)
+        lineTo(19f, 5f)
+        close()
+    }.build()
+
+val FullscreenExitIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "FullscreenExit",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).path(
+        fill = SolidColor(Color.White),
+        stroke = null,
+        strokeLineWidth = 0f,
+        strokeLineCap = StrokeCap.Butt,
+        strokeLineJoin = StrokeJoin.Miter,
+        strokeLineMiter = 1f
+    ) {
+        moveTo(5f, 16f)
+        lineTo(8f, 16f)
+        lineTo(8f, 19f)
+        lineTo(10f, 19f)
+        lineTo(10f, 14f)
+        lineTo(5f, 14f)
+        close()
+        moveTo(8f, 8f)
+        lineTo(5f, 8f)
+        lineTo(5f, 10f)
+        lineTo(10f, 10f)
+        lineTo(10f, 5f)
+        lineTo(8f, 5f)
+        close()
+        moveTo(14f, 19f)
+        lineTo(16f, 19f)
+        lineTo(16f, 16f)
+        lineTo(19f, 16f)
+        lineTo(19f, 14f)
+        lineTo(14f, 14f)
+        close()
+        moveTo(16f, 8f)
+        lineTo(19f, 8f)
+        lineTo(19f, 10f)
+        lineTo(14f, 10f)
+        lineTo(14f, 5f)
+        lineTo(16f, 5f)
+        close()
+    }.build()
+
 @Composable
 fun VideoPlayer(
     videoUrl: String,
@@ -45,11 +144,85 @@ fun VideoPlayer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var isFullscreen by remember { mutableStateOf(false) }
 
     // Trigger auto-launch if engine is set to External App
     LaunchedEffect(videoUrl, selectedEngine) {
         if (selectedEngine == PlayerEngine.EXTERNAL_APP) {
             launchExternalPlayer(context, videoUrl, title)
+        }
+    }
+
+    if (isFullscreen) {
+        Dialog(
+            onDismissRequest = { isFullscreen = false },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                // Video Player Engine Widget stretched to fill max size
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (selectedEngine) {
+                        PlayerEngine.EXOPLAYER -> {
+                            ExoPlayerWidget(videoUrl = videoUrl, onError = onError, modifier = Modifier.fillMaxSize())
+                        }
+                        PlayerEngine.NATIVE_VIDEO_VIEW -> {
+                            NativeVideoViewWidget(videoUrl = videoUrl, onError = onError, modifier = Modifier.fillMaxSize())
+                        }
+                        PlayerEngine.WEB_EMBED -> {
+                            WebEmbedWidget(videoUrl = videoUrl, modifier = Modifier.fillMaxSize())
+                        }
+                        PlayerEngine.EXTERNAL_APP -> {
+                            ExternalAppWidget(
+                                videoUrl = videoUrl,
+                                title = title,
+                                onLaunch = { launchExternalPlayer(context, videoUrl, title) },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+
+                // Controls overlay on top of full screen dialog
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Transparent)))
+                        .padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = { isFullscreen = false }
+                    ) {
+                        Icon(
+                            imageVector = FullscreenExitIcon,
+                            contentDescription = "Exit Fullscreen",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -72,11 +245,6 @@ fun VideoPlayer(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Now Streaming via ${selectedEngine.displayName}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF00E5FF)
-                    )
-                    Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
@@ -85,6 +253,13 @@ fun VideoPlayer(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (selectedEngine != PlayerEngine.EXTERNAL_APP) {
+                        IconButton(onClick = { isFullscreen = true }) {
+                            Icon(
+                                imageVector = FullscreenIcon,
+                                contentDescription = "Fullscreen preview",
+                                tint = Color(0xFF00E5FF)
+                            )
+                        }
                         IconButton(onClick = { launchExternalPlayer(context, videoUrl, title) }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
@@ -129,16 +304,6 @@ fun VideoPlayer(
                     }
                 }
             }
-            
-            /*
-            // Brief engine details helper
-            Text(
-                text = selectedEngine.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-            */
         }
     }
 }

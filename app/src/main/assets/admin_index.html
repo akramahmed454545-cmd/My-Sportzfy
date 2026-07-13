@@ -4,46 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sportzfy Live - Admin Console Panel</title>
-    <!-- Bulletproof Browser Shield & Anti-Scraping / Anti-Sniffing protection -->
-    <script>
-        document.addEventListener('contextmenu', function (e) {
-            e.preventDefault();
-        });
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'F12' || e.keyCode === 123) {
-                e.preventDefault();
-                return false;
-            }
-            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C' || e.key === 'U' || e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67 || e.keyCode === 85)) {
-                e.preventDefault();
-                return false;
-            }
-            if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
-                e.preventDefault();
-                return false;
-            }
-            if (e.ctrlKey && (e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
-                e.preventDefault();
-                return false;
-            }
-        });
-        document.addEventListener('selectstart', function (e) {
-            const tag = e.target.tagName ? e.target.tagName.toLowerCase() : '';
-            if (tag !== 'input' && tag !== 'textarea') {
-                e.preventDefault();
-            }
-        });
-        (function() {
-            const block = function() {
-                setInterval(function() {
-                    debugger;
-                }, 100);
-            };
-            try {
-                block();
-            } catch(err) {}
-        })();
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -107,6 +67,10 @@
             <button onclick="switchTab('reporting')" id="tab-reporting" class="px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white hover:border-gray-500 transition flex items-center gap-2">
                 <i class="fa-solid fa-chart-line"></i>
                 <span>Reporting & Analytics</span>
+            </button>
+            <button onclick="switchTab('customization')" id="tab-customization" class="px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white hover:border-gray-500 transition flex items-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Customization</span>
             </button>
         </div>
 
@@ -1040,6 +1004,257 @@
                 </div>
             </div>
         </div>
+
+        <!-- TAB 5 CONTENT: Customization -->
+        <div id="content-customization" class="space-y-8 hidden">
+            <!-- Customization Settings Card -->
+            <div class="bg-[#101827] border border-[#1e2d4a] rounded-2xl overflow-hidden shadow-2xl">
+                <div class="p-6 border-b border-[#1e2d4a] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#141d2f]/40">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                            <i class="fa-solid fa-wand-magic-sparkles text-lg animate-pulse"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-black text-white">Application Customization</h2>
+                            <p class="text-xs text-gray-400 mt-0.5">Dynamically customize the UI colors, fonts, texts, and logos for both Web and Android App clients.</p>
+                        </div>
+                    </div>
+                    <button onclick="saveCustomizationSettings()" class="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-[#0b111e] font-extrabold px-6 py-2.5 rounded-xl text-sm transition duration-200 shadow-lg shadow-cyan-500/10 hover:scale-[1.02]">
+                        <i class="fa-solid fa-save mr-1.5"></i>Save Customization
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-8">
+                    <!-- SECTION 1: Theme Colors -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-palette text-xs"></i>
+                            <span>1. Theme Colors & Styling</span>
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-[#0b111e]/40 p-5 rounded-2xl border border-[#152033]">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Primary Accent Color</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="customPrimaryColor" class="w-10 h-10 rounded-lg border-2 border-[#1e2d4a] bg-transparent cursor-pointer">
+                                    <input type="text" id="customPrimaryColorHex" oninput="syncColorInput('customPrimaryColor', this.value)" class="flex-1 bg-[#0b111e] border border-[#1e2d4a] rounded-lg px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-cyan-400">
+                                </div>
+                                <p class="text-[10px] text-gray-500 mt-1">Logo glow and highlight highlights.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Shadow Glow Color</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="customShadowColor" class="w-10 h-10 rounded-lg border-2 border-[#1e2d4a] bg-transparent cursor-pointer">
+                                    <input type="text" id="customShadowColorHex" oninput="syncColorInput('customShadowColor', this.value)" class="flex-1 bg-[#0b111e] border border-[#1e2d4a] rounded-lg px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-cyan-400">
+                                </div>
+                                <p class="text-[10px] text-gray-500 mt-1">Retro text shadow glow offset.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">App Background Color</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="customBgColor" class="w-10 h-10 rounded-lg border-2 border-[#1e2d4a] bg-transparent cursor-pointer">
+                                    <input type="text" id="customBgColorHex" oninput="syncColorInput('customBgColor', this.value)" class="flex-1 bg-[#0b111e] border border-[#1e2d4a] rounded-lg px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-cyan-400">
+                                </div>
+                                <p class="text-[10px] text-gray-500 mt-1">Main container page background.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Header / Cards Color</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="customHeaderBgColor" class="w-10 h-10 rounded-lg border-2 border-[#1e2d4a] bg-transparent cursor-pointer">
+                                    <input type="text" id="customHeaderBgColorHex" oninput="syncColorInput('customHeaderBgColor', this.value)" class="flex-1 bg-[#0b111e] border border-[#1e2d4a] rounded-lg px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-cyan-400">
+                                </div>
+                                <p class="text-[10px] text-gray-500 mt-1">Top header, navigation, cards, drawers.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 2: Text Customization & Fonts -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-font text-xs"></i>
+                            <span>2. Brand Text & Fonts</span>
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-[#0b111e]/40 p-5 rounded-2xl border border-[#152033]">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">Custom App Title</label>
+                                <input type="text" id="customAppTitle" placeholder="e.g. Sportzfy" class="w-full bg-[#0b111e] border border-[#1e2d4a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                                <p class="text-[10px] text-gray-500 mt-1">The title shown in the web browser and app header when no logo image is set.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">Loading Screen Message</label>
+                                <input type="text" id="customLoadingText" placeholder="e.g. Loading live streams..." class="w-full bg-[#0b111e] border border-[#1e2d4a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                                <p class="text-[10px] text-gray-500 mt-1">The text displayed when streams or playlist items are launching.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">Global Typography Style</label>
+                                <select id="customFontStyle" class="w-full bg-[#0b111e] border border-[#1e2d4a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                                    <option value="SansSerif">Sans-Serif (Modern & Clean)</option>
+                                    <option value="Serif">Serif (Traditional & Elegant)</option>
+                                    <option value="Monospace">Monospace (Retro & Tech)</option>
+                                    <option value="Cursive">Cursive (Playful & Styled)</option>
+                                </select>
+                                <p class="text-[10px] text-gray-500 mt-1">Changes the primary font family across the layout.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 3: Logos Upload & Customization -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-images text-xs"></i>
+                            <span>3. Logo Assets Uploads</span>
+                        </h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                            <!-- Logo Top Toolbar -->
+                            <div class="bg-[#0b111e]/40 p-5 rounded-2xl border border-[#152033] flex flex-col justify-between space-y-4">
+                                <div class="space-y-1.5">
+                                    <h4 class="text-xs font-extrabold text-white">Top Toolbar Header Logo</h4>
+                                    <p class="text-[10px] text-gray-400 leading-relaxed">Replaces the "Sportzfy" text logo on the top toolbar of Web and Android clients. High-quality .png with transparent background recommended.</p>
+                                </div>
+                                <div class="bg-[#0b111e] border border-[#1e2d4a] rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-3">
+                                    <div id="topLogoPreview" class="h-16 w-full flex items-center justify-center border border-[#152033] rounded-lg bg-black/20 overflow-hidden">
+                                        <span class="text-gray-600 text-[10px]">No logo file uploaded</span>
+                                    </div>
+                                    <div class="flex gap-2 w-full justify-center">
+                                        <label class="cursor-pointer bg-cyan-500 hover:bg-cyan-600 text-[#0b111e] font-extrabold px-3 py-2 rounded-xl text-xs transition duration-150 shadow-md">
+                                            Choose Logo
+                                            <input type="file" id="topLogoFileInput" class="hidden" accept=".png" onchange="uploadLogoAsset('top')">
+                                        </label>
+                                        <button onclick="clearLogoAsset('top')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-2 rounded-xl text-xs font-bold transition">
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Logo Loading Page -->
+                            <div class="bg-[#0b111e]/40 p-5 rounded-2xl border border-[#152033] flex flex-col justify-between space-y-4">
+                                <div class="space-y-1.5">
+                                    <h4 class="text-xs font-extrabold text-white">Loading Screen Page Logo</h4>
+                                    <p class="text-[10px] text-gray-400 leading-relaxed">Shown on the loading screens when video channels or broadcasts are synchronizing with the server.</p>
+                                </div>
+                                <div class="bg-[#0b111e] border border-[#1e2d4a] rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-3">
+                                    <div id="loadingLogoPreview" class="h-16 w-full flex items-center justify-center border border-[#152033] rounded-lg bg-black/20 overflow-hidden">
+                                        <span class="text-gray-600 text-[10px]">No logo file uploaded</span>
+                                    </div>
+                                    <div class="flex gap-2 w-full justify-center">
+                                        <label class="cursor-pointer bg-cyan-500 hover:bg-cyan-600 text-[#0b111e] font-extrabold px-3 py-2 rounded-xl text-xs transition duration-150 shadow-md">
+                                            Choose Logo
+                                            <input type="file" id="loadingLogoFileInput" class="hidden" accept=".png" onchange="uploadLogoAsset('loading')">
+                                        </label>
+                                        <button onclick="clearLogoAsset('loading')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-2 rounded-xl text-xs font-bold transition">
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Logo Android App Icon -->
+                            <div class="bg-[#0b111e]/40 p-5 rounded-2xl border border-[#152033] flex flex-col justify-between space-y-4">
+                                <div class="space-y-1.5">
+                                    <h4 class="text-xs font-extrabold text-white">Android Navigation Drawer Logo</h4>
+                                    <p class="text-[10px] text-gray-400 leading-relaxed">Shown at the header of the sliding left navigation drawer of the Android App client and Web sidebar drawer menu.</p>
+                                </div>
+                                <div class="bg-[#0b111e] border border-[#1e2d4a] rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-3">
+                                    <div id="appLogoPreview" class="h-16 w-full flex items-center justify-center border border-[#152033] rounded-lg bg-black/20 overflow-hidden">
+                                        <span class="text-gray-600 text-[10px]">No logo file uploaded</span>
+                                    </div>
+                                    <div class="flex gap-2 w-full justify-center">
+                                        <label class="cursor-pointer bg-cyan-500 hover:bg-cyan-600 text-[#0b111e] font-extrabold px-3 py-2 rounded-xl text-xs transition duration-150 shadow-md">
+                                            Choose Logo
+                                            <input type="file" id="appLogoFileInput" class="hidden" accept=".png" onchange="uploadLogoAsset('app')">
+                                        </label>
+                                        <button onclick="clearLogoAsset('app')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-2 rounded-xl text-xs font-bold transition">
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Logo Android App Logo PNG -->
+                            <div class="bg-[#0b111e]/40 p-5 rounded-2xl border border-[#152033] flex flex-col justify-between space-y-4">
+                                <div class="space-y-1.5">
+                                    <h4 class="text-xs font-extrabold text-white">Android App Logo PNG</h4>
+                                    <p class="text-[10px] text-gray-400 leading-relaxed">The main application logo shown in general brand assets, onboarding screens, or splash. High-quality .png recommended.</p>
+                                </div>
+                                <div class="bg-[#0b111e] border border-[#1e2d4a] rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-3">
+                                    <div id="androidLogoPreview" class="h-16 w-full flex items-center justify-center border border-[#152033] rounded-lg bg-black/20 overflow-hidden">
+                                        <span class="text-gray-600 text-[10px]">No logo file uploaded</span>
+                                    </div>
+                                    <div class="flex gap-2 w-full justify-center">
+                                        <label class="cursor-pointer bg-cyan-500 hover:bg-cyan-600 text-[#0b111e] font-extrabold px-3 py-2 rounded-xl text-xs transition duration-150 shadow-md">
+                                            Choose Logo
+                                            <input type="file" id="androidLogoFileInput" class="hidden" accept=".png" onchange="uploadLogoAsset('android')">
+                                        </label>
+                                        <button onclick="clearLogoAsset('android')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-2 rounded-xl text-xs font-bold transition">
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 4: Scrolling News Announcements Ticker -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-bullhorn text-xs"></i>
+                            <span>4. Scrolling News Ticker Announcement Banner</span>
+                        </h3>
+                        <div class="bg-[#0b111e]/40 p-5 rounded-2xl border border-[#152033] space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="text-xs font-extrabold text-white">Enable Custom Announcement Ticker</h4>
+                                    <p class="text-[10px] text-gray-400 mt-0.5">When active, the text set below will scroll continuously on the top notice banner on both Web and Android apps, overriding default notifications.</p>
+                                </div>
+                                <select id="customAnnouncementEnabled" class="bg-[#0b111e] border border-[#1e2d4a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-bold">
+                                    <option value="true">Active (On)</option>
+                                    <option value="false">Inactive (Off)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">Announcement Message Text</label>
+                                <textarea id="customAnnouncementText" placeholder="Welcome to the updated Sportzfy App! Enjoy seamless HD streams..." rows="2" class="w-full bg-[#0b111e] border border-[#1e2d4a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 text-xs leading-relaxed"></textarea>
+                                <p class="text-[10px] text-gray-500 mt-1">This announcement text supports emojis. Keep it concise for a smooth horizontal marquee layout loop.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 5: Menu Options Settings -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-xs"></i>
+                            <span>5. Custom Menu Dialog & Actions Settings</span>
+                        </h3>
+                        <div class="bg-[#0b111e]/40 p-5 rounded-2xl border border-[#152033] space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">Announcement Notice Text</label>
+                                    <textarea id="customNoticeText" placeholder="Sportzfy announcement text content..." rows="3" class="w-full bg-[#0b111e] border border-[#1e2d4a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 text-xs leading-relaxed"></textarea>
+                                    <p class="text-[10px] text-gray-500 mt-1">Text shown inside the 'Notice' menu option dialog.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">Copyright Disclaimer Text</label>
+                                    <textarea id="customCopyrightText" placeholder="Copyright disclaimer content..." rows="3" class="w-full bg-[#0b111e] border border-[#1e2d4a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 text-xs leading-relaxed"></textarea>
+                                    <p class="text-[10px] text-gray-500 mt-1">Disclaimer text shown inside the 'Copyright' menu option dialog.</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">Telegram / Join Us Link</label>
+                                    <input type="text" id="customJoinUsUrl" placeholder="https://t.me/sportzfy_live" class="w-full bg-[#0b111e] border border-[#1e2d4a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                                    <p class="text-[10px] text-gray-500 mt-1">The URL or invite link for the 'Join Us' menu action.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">Support Email Address</label>
+                                    <input type="text" id="customSupportEmail" placeholder="support@sportzfy.live" class="w-full bg-[#0b111e] border border-[#1e2d4a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                                    <p class="text-[10px] text-gray-500 mt-1">The recipient email address for the feedback 'Email' menu action.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Modals -->
@@ -1352,9 +1567,9 @@
                         Close Simulator
                     </button>
                 </div>
-            </div>
         </div>
     </div>
+</div> <!-- End of preRollPreviewModal -->
 
     <script>
         const API_URL = '';
@@ -1719,6 +1934,7 @@
             fetchUpdateSettings();
             fetchMaintenanceSettings();
             fetchStreamHealthAndReports();
+            fetchCustomizationSettings();
             setInterval(checkObsStatus, 2500);
 
             // Periodically check/update header badge and tab title
@@ -1731,10 +1947,12 @@
             const tabAppManagement = document.getElementById('tab-app-management');
             const tabAds = document.getElementById('tab-ads');
             const tabReporting = document.getElementById('tab-reporting');
+            const tabCustomization = document.getElementById('tab-customization');
             const contentBroadcasts = document.getElementById('content-broadcasts');
             const contentAppManagement = document.getElementById('content-app-management');
             const contentAds = document.getElementById('content-ads');
             const contentReporting = document.getElementById('content-reporting');
+            const contentCustomization = document.getElementById('content-customization');
 
             const activeClass = "px-6 py-3 text-sm font-bold border-b-2 border-cyan-400 text-cyan-400 transition flex items-center gap-2";
             const inactiveClass = "px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white hover:border-gray-500 transition flex items-center gap-2";
@@ -1743,11 +1961,13 @@
             tabAppManagement.className = inactiveClass;
             if (tabAds) tabAds.className = inactiveClass;
             if (tabReporting) tabReporting.className = inactiveClass;
+            if (tabCustomization) tabCustomization.className = inactiveClass;
 
             contentBroadcasts.classList.add('hidden');
             contentAppManagement.classList.add('hidden');
             if (contentAds) contentAds.classList.add('hidden');
             if (contentReporting) contentReporting.classList.add('hidden');
+            if (contentCustomization) contentCustomization.classList.add('hidden');
 
             if (tabId === 'broadcasts') {
                 tabBroadcasts.className = activeClass;
@@ -1764,6 +1984,10 @@
                 if (tabReporting) tabReporting.className = activeClass;
                 if (contentReporting) contentReporting.classList.remove('hidden');
                 fetchAnalyticsDashboard();
+            } else if (tabId === 'customization') {
+                if (tabCustomization) tabCustomization.className = activeClass;
+                if (contentCustomization) contentCustomization.classList.remove('hidden');
+                fetchCustomizationSettings();
             }
         }
 
@@ -1778,6 +2002,159 @@
                 document.getElementById("updateIsMandatory").checked = !!data.isMandatory;
             } catch (e) {
                 console.error("Error fetching update settings", e);
+            }
+        }
+
+        // Customization tab helpers
+        function syncColorInput(inputId, val) {
+            document.getElementById(inputId).value = val;
+        }
+
+        async function fetchCustomizationSettings() {
+            try {
+                const res = await fetch(getApiUrl('/api/customization'));
+                const data = await res.json();
+                
+                document.getElementById('customPrimaryColor').value = data.primaryColor || '#00E5FF';
+                document.getElementById('customPrimaryColorHex').value = data.primaryColor || '#00E5FF';
+                
+                document.getElementById('customShadowColor').value = data.shadowColor || '#FF1744';
+                document.getElementById('customShadowColorHex').value = data.shadowColor || '#FF1744';
+                
+                document.getElementById('customBgColor').value = data.bgColor || '#0B111E';
+                document.getElementById('customBgColorHex').value = data.bgColor || '#0B111E';
+                
+                document.getElementById('customHeaderBgColor').value = data.headerBgColor || '#0F1826';
+                document.getElementById('customHeaderBgColorHex').value = data.headerBgColor || '#0F1826';
+                
+                document.getElementById('customAppTitle').value = data.appTitle || 'Sportzfy';
+                document.getElementById('customLoadingText').value = data.loadingText || 'Loading live streams...';
+                document.getElementById('customFontStyle').value = data.fontStyle || 'SansSerif';
+                
+                document.getElementById('customAnnouncementEnabled').value = data.announcementEnabled ? 'true' : 'false';
+                document.getElementById('customAnnouncementText').value = data.announcementText || '';
+
+                document.getElementById('customNoticeText').value = data.noticeText || '';
+                document.getElementById('customCopyrightText').value = data.copyrightText || '';
+                document.getElementById('customJoinUsUrl').value = data.joinUsUrl || '';
+                document.getElementById('customSupportEmail').value = data.supportEmail || '';
+
+                // Setup live color picker change listeners
+                const pickers = ['customPrimaryColor', 'customShadowColor', 'customBgColor', 'customHeaderBgColor'];
+                pickers.forEach(id => {
+                    const picker = document.getElementById(id);
+                    const hexInput = document.getElementById(id + 'Hex');
+                    if (picker && hexInput) {
+                        picker.oninput = (e) => {
+                            hexInput.value = e.target.value.toUpperCase();
+                        };
+                    }
+                });
+
+                // Set Logo previews
+                updateLogoPreview('top', data.hasTopLogo);
+                updateLogoPreview('loading', data.hasLoadingLogo);
+                updateLogoPreview('app', data.hasAppLogo);
+                updateLogoPreview('android', data.hasAndroidLogo);
+            } catch (e) {
+                console.error("Error fetching customization settings", e);
+                alert("Failed to fetch customization configurations.");
+            }
+        }
+
+        function updateLogoPreview(type, hasLogo) {
+            const previewDiv = document.getElementById(type + 'LogoPreview');
+            if (previewDiv) {
+                if (hasLogo) {
+                    // Use random query param to bust browser cache
+                    previewDiv.innerHTML = `<img src="${getApiUrl('/api/customization/logo-' + type + '?cb=' + Date.now())}" class="h-14 max-w-full object-contain">`;
+                } else {
+                    previewDiv.innerHTML = `<span class="text-gray-600 text-[10px]">No logo file uploaded</span>`;
+                }
+            }
+        }
+
+        async function saveCustomizationSettings() {
+            const payload = {
+                primaryColor: document.getElementById('customPrimaryColorHex').value.trim() || '#00E5FF',
+                shadowColor: document.getElementById('customShadowColorHex').value.trim() || '#FF1744',
+                bgColor: document.getElementById('customBgColorHex').value.trim() || '#0B111E',
+                headerBgColor: document.getElementById('customHeaderBgColorHex').value.trim() || '#0F1826',
+                appTitle: document.getElementById('customAppTitle').value.trim() || 'Sportzfy',
+                loadingText: document.getElementById('customLoadingText').value.trim() || 'Loading live streams...',
+                fontStyle: document.getElementById('customFontStyle').value,
+                announcementEnabled: document.getElementById('customAnnouncementEnabled').value === 'true',
+                announcementText: document.getElementById('customAnnouncementText').value.trim(),
+                noticeText: document.getElementById('customNoticeText').value.trim(),
+                copyrightText: document.getElementById('customCopyrightText').value.trim(),
+                joinUsUrl: document.getElementById('customJoinUsUrl').value.trim(),
+                supportEmail: document.getElementById('customSupportEmail').value.trim()
+            };
+
+            try {
+                const res = await fetch(getApiUrl('/api/customization'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("Customization settings saved successfully!");
+                    fetchCustomizationSettings();
+                } else {
+                    alert("Error saving settings: " + data.message);
+                }
+            } catch (e) {
+                console.error("Error saving customization settings", e);
+                alert("Failed to save customization settings: " + e.message);
+            }
+        }
+
+        async function uploadLogoAsset(type) {
+            const fileInput = document.getElementById(type + 'LogoFileInput');
+            if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
+            const file = fileInput.files[0];
+            
+            try {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const arrayBuffer = e.target.result;
+                    const res = await fetch(getApiUrl('/api/customization/upload-logo?type=' + type), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/octet-stream' },
+                        body: arrayBuffer
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(`${type.toUpperCase()} logo uploaded successfully!`);
+                        fetchCustomizationSettings();
+                    } else {
+                        alert("Failed to upload: " + data.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (e) {
+                console.error("Error uploading logo", e);
+                alert("Error uploading logo: " + e.message);
+            }
+        }
+
+        async function clearLogoAsset(type) {
+            if (!confirm(`Are you sure you want to clear the ${type} logo?`)) return;
+            try {
+                const res = await fetch(getApiUrl('/api/customization/clear-logo?type=' + type), {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`${type.toUpperCase()} logo cleared successfully!`);
+                    fetchCustomizationSettings();
+                } else {
+                    alert("Failed to clear logo: " + data.message);
+                }
+            } catch (e) {
+                console.error("Error clearing logo", e);
+                alert("Error: " + e.message);
             }
         }
 
@@ -2484,8 +2861,9 @@
                             </div>
                         </div>
                         <div class="flex justify-between items-center mt-3 pt-2 border-t border-[#1e2d4a]/50">
-                            <span class="text-[10px] text-gray-500 truncate max-w-[200px]">${m.streamUrl}</span>
+                            <span class="text-[10px] text-gray-500 truncate max-w-[160px]">${m.streamUrl}</span>
                             <div class="flex space-x-2">
+                                <button onclick='triggerFcmAlert(${JSON.stringify(m)})' class="bg-[#1e2d4a] hover:bg-cyan-500 hover:text-black text-cyan-400 px-2 py-1 rounded-lg text-xs font-bold flex items-center space-x-1 transition duration-200" title="Trigger Live Notification"><i class="fa-solid fa-bell"></i><span>Alert</span></button>
                                 <button onclick='editMatch(${JSON.stringify(m)})' class="bg-gray-700 hover:bg-gray-600 text-cyan-400 px-3 py-1 rounded-lg text-xs"><i class="fa-solid fa-pen"></i></button>
                                 <button onclick="deleteMatch(${m.id})" class="bg-red-950/40 hover:bg-red-900 text-red-400 px-3 py-1 rounded-lg text-xs"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
@@ -2554,6 +2932,31 @@
             const result = await res.json();
             if (result.success) {
                 fetchMatches();
+            }
+        }
+
+        async function triggerFcmAlert(m) {
+            try {
+                const res = await fetch(API_URL + '/api/send-fcm-alert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        matchId: m.id.toString(),
+                        title: `${m.team1Name} vs ${m.team2Name}`,
+                        sport: m.sport,
+                        status: m.status,
+                        body: `🏆 ${m.title} went LIVE! Tap to open stream now.`
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert("🔴 Live match alert broadcasted successfully! All subscribed users will receive a push notification.");
+                } else {
+                    alert("Failed to send alert: " + (result.error || "Unknown error"));
+                }
+            } catch (e) {
+                console.error("Error triggering FCM alert", e);
+                alert("Connection failed while triggering alert.");
             }
         }
 

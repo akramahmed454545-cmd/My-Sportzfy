@@ -5,5 +5,9 @@
   "main": "express-server/server.js",
   "scripts": {
     "start": "node express-server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
   }
 }

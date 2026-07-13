@@ -88,6 +88,203 @@ app.use((req, res, next) => {
     next();
 });
 
+const activeAdminSessions = new Map(); // token -> expiry
+
+function parseCookies(cookieHeader) {
+    const list = {};
+    if (!cookieHeader) return list;
+    cookieHeader.split(';').forEach(cookie => {
+        const parts = cookie.split('=');
+        list[parts.shift().trim()] = decodeURI(parts.join('='));
+    });
+    return list;
+}
+
+function isSessionValid(req) {
+    // 1. Check Authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : authHeader.trim();
+        const expiry = activeAdminSessions.get(token);
+        if (expiry && Date.now() < expiry) {
+            activeAdminSessions.set(token, Date.now() + 86400000); // extend 24h
+            return true;
+        } else if (expiry) {
+            activeAdminSessions.delete(token);
+        }
+    }
+
+    // 2. Check Cookie
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies.admin_session;
+    if (token) {
+        const expiry = activeAdminSessions.get(token);
+        if (expiry && Date.now() < expiry) {
+            activeAdminSessions.set(token, Date.now() + 86400000); // extend 24h
+            return true;
+        } else if (expiry) {
+            activeAdminSessions.delete(token);
+        }
+    }
+    return false;
+}
+
+// Global Security Headers (Clickjacking, XSS, MIME Sniffing, Referrer protections)
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+});
+
+// Lightweight In-Memory Rate Limiter and Scraper Prevention
+const ipRequestCounts = {};
+setInterval(() => {
+    // Clear rate limits every 60 seconds
+    for (const ip in ipRequestCounts) {
+        ipRequestCounts[ip].count = 0;
+    }
+}, 60000);
+
+app.use((req, res, next) => {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const urlPath = req.path;
+
+    if (!ipRequestCounts[ip]) {
+        ipRequestCounts[ip] = { count: 0, blockedUntil: 0 };
+    }
+
+    if (Date.now() < ipRequestCounts[ip].blockedUntil) {
+        return res.status(429).json({
+            error: "Too Many Requests",
+            message: "Our security shields detected suspicious scraping activity from your IP. Access blocked temporarily."
+        });
+    }
+
+    ipRequestCounts[ip].count++;
+
+    // Limit to 120 API requests per minute (very safe but blocks heavy scraping/sniffing)
+    if (ipRequestCounts[ip].count > 120) {
+        ipRequestCounts[ip].blockedUntil = Date.now() + 10 * 60 * 1000; // Block for 10 minutes
+        console.warn(`[SECURITY DETECTED] Rate limit exceeded by IP: ${ip}. Blocked for 10 mins.`);
+        return res.status(429).json({
+            error: "Too Many Requests",
+            message: "Suspicious automated activity detected. Your IP has been temporarily blocked for security reasons."
+        });
+    }
+
+    // Anti-Scraping Shield: check custom signatures for APIs
+    if (urlPath.startsWith('/api/') && urlPath !== '/api/login' && urlPath !== '/api/logout') {
+        const userAgent = req.headers['user-agent'] || '';
+        const secureKey = req.headers['x-sportzfy-sec-key'];
+        
+        // Allowed client patterns:
+        // 1. Android App client
+        const isAndroidApp = userAgent.includes('SportzfySecureClient') || secureKey === 'sportzfy_bulletproof_android_sec_2026';
+        // 2. Web App / Admin browser client (must have referer containing /web-app or admin console, and not a command line tool like curl, python, etc.)
+        const isWebOrAdmin = req.headers['referer'] && 
+                             (req.headers['referer'].includes('/web-app') || req.headers['referer'].includes('/login.html') || req.headers['referer'].includes('/index.html') || req.headers['referer'].includes(req.headers['host'])) &&
+                             !userAgent.includes('curl') && 
+                             !userAgent.includes('Wget') && 
+                             !userAgent.includes('python-requests') && 
+                             !userAgent.includes('Postman');
+
+        if (!isAndroidApp && !isWebOrAdmin) {
+            console.warn(`[SECURITY DETECTED] Scraper/Sniffer blocked. IP: ${ip}, User-Agent: ${userAgent}`);
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Direct API scraping or headless data collection is blocked by Sportzfy Shields."
+            });
+        }
+    }
+
+    next();
+});
+
+// Authentication Check Middleware for web pages and write APIs
+app.use((req, res, next) => {
+    const urlPath = req.path;
+
+    // 1. Exclude public static routes
+    if (urlPath === '/web-app' || urlPath.startsWith('/web-app/')) {
+        return next();
+    }
+    if (urlPath === '/apk/sportzfy-latest.apk') {
+        return next();
+    }
+    if (urlPath.startsWith('/obs/')) {
+        return next();
+    }
+    if (urlPath === '/login.html') {
+        return next();
+    }
+
+    // 2. Exclude public API routes
+    if (urlPath === '/api/login' || urlPath === '/api/logout') {
+        return next();
+    }
+
+    // 3. Exclude API Key protected routes (handled by checkApiKey middleware later)
+    if (urlPath.startsWith('/api/secure/')) {
+        return next();
+    }
+
+    // 4. Exclude public read-only (GET) APIs
+    const isPublicGet = req.method === 'GET' && (
+        urlPath === '/api/status' ||
+        urlPath === '/api/matches' ||
+        urlPath === '/api/channels' ||
+        urlPath === '/api/highlights' ||
+        urlPath === '/api/notices' ||
+        urlPath === '/api/banner-ad' ||
+        urlPath === '/api/ads-settings' ||
+        urlPath === '/api/app-update' ||
+        urlPath === '/api/maintenance' ||
+        urlPath === '/api/obs-status' ||
+        urlPath === '/api/analytics/track-ad-click'
+    );
+    if (isPublicGet) {
+        return next();
+    }
+
+    // 5. Exclude public write (POST) APIs
+    const isPublicPost = req.method === 'POST' && (
+        urlPath === '/api/analytics/heartbeat' ||
+        urlPath === '/api/analytics/track-view' ||
+        urlPath === '/api/stream-report' ||
+        urlPath === '/api/send-fcm-alert'
+    );
+    if (isPublicPost) {
+        return next();
+    }
+
+    // 6. Handle Administrative Pages (root, index.html)
+    const isHtmlPage = urlPath === '/' || urlPath === '/index.html';
+    if (isHtmlPage) {
+        if (!isSessionValid(req)) {
+            return res.sendFile(path.join(__dirname, 'public', 'login.html'));
+        }
+        return next();
+    }
+
+    // 7. For all other /api/* requests (Admin actions), require valid session
+    if (urlPath.startsWith('/api/')) {
+        if (!isSessionValid(req)) {
+            return res.status(401).json({ error: "Unauthorized: Please login" });
+        }
+        return next();
+    }
+
+    // 8. For any other static assets (like favicon, css, js) requested:
+    // We let them through to avoid breaking asset loads, but block raw HTML pages if not logged in.
+    if (!isSessionValid(req) && (urlPath.endsWith('.html') || urlPath === '/')) {
+        return res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    }
+
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Secure API Key Middleware for /api/secure/*
@@ -372,6 +569,38 @@ function seedDb() {
 // UNSECURED / PUBLIC APIS (Admin Console / Web App)
 // ==========================================
 
+// Authentication Routes
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    if (username === 'shafin.sportzfy' && password === 'Abcd#43214') {
+        const crypto = require('crypto');
+        const token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+        activeAdminSessions.set(token, Date.now() + 86400000); // 24 hours
+        res.cookie('admin_session', token, {
+            path: '/',
+            httpOnly: true,
+            sameSite: 'strict',
+            maxAge: 86400000
+        });
+        return res.json({ success: true, token });
+    } else {
+        // Anti brute force delay
+        setTimeout(() => {
+            return res.status(401).json({ success: false, error: "Invalid username or password" });
+        }, 1500);
+    }
+});
+
+app.post('/api/logout', (req, res) => {
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies.admin_session;
+    if (token) {
+        activeAdminSessions.delete(token);
+    }
+    res.clearCookie('admin_session', { path: '/' });
+    return res.json({ success: true });
+});
+
 // Server status
 app.get('/api/status', (req, res) => {
     res.json({
@@ -411,6 +640,19 @@ app.post('/api/matches', (req, res) => {
     }
     writeDb(db);
     res.json({ success: true, match: updatedMatch });
+});
+
+app.post('/api/send-fcm-alert', (req, res) => {
+    const { matchId, title, sport, status, body } = req.body;
+    console.log(`[FCM SIMULATION] Sending live match push notification. Match ID: ${matchId}, Title: ${title}, Sport: ${sport}, Status: ${status}`);
+    res.json({
+        success: true,
+        message: "FCM notification broadcast simulated successfully!",
+        payload: {
+            topic: `match_${matchId}`,
+            data: { matchId, title, sport, status, body: body || "The match is live now! Tap to watch." }
+        }
+    });
 });
 
 app.delete('/api/matches', (req, res) => {

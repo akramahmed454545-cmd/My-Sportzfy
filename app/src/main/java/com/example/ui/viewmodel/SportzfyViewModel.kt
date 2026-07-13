@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.*
 import com.example.webserver.AdminWebServer
 import com.example.webserver.NetworkUtils
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -80,6 +81,8 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
             val request = Request.Builder()
                 .url(syncUrl)
                 .addHeader("X-API-KEY", _remoteApiKey.value.trim())
+                .addHeader("User-Agent", "SportzfySecureClient/1.2.0")
+                .addHeader("X-Sportzfy-Sec-Key", "sportzfy_bulletproof_android_sec_2026")
                 .get()
                 .build()
 
@@ -216,6 +219,38 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
     private val _currentTab = MutableStateFlow(SportzfyTab.Home)
     val currentTab: StateFlow<SportzfyTab> = _currentTab.asStateFlow()
 
+    private val _favoritedMatchIds = MutableStateFlow<Set<String>>(
+        sharedPrefs.getStringSet("favorite_match_ids", emptySet()) ?: emptySet()
+    )
+    val favoritedMatchIds: StateFlow<Set<String>> = _favoritedMatchIds.asStateFlow()
+
+    private val _favoritedChannelIds = MutableStateFlow<Set<String>>(
+        sharedPrefs.getStringSet("favorite_channel_ids", emptySet()) ?: emptySet()
+    )
+    val favoritedChannelIds: StateFlow<Set<String>> = _favoritedChannelIds.asStateFlow()
+
+    fun toggleMatchFavorite(matchId: String) {
+        val current = _favoritedMatchIds.value.toMutableSet()
+        if (current.contains(matchId)) {
+            current.remove(matchId)
+        } else {
+            current.add(matchId)
+        }
+        _favoritedMatchIds.value = current
+        sharedPrefs.edit().putStringSet("favorite_match_ids", current).apply()
+    }
+
+    fun toggleChannelFavorite(channelId: String) {
+        val current = _favoritedChannelIds.value.toMutableSet()
+        if (current.contains(channelId)) {
+            current.remove(channelId)
+        } else {
+            current.add(channelId)
+        }
+        _favoritedChannelIds.value = current
+        sharedPrefs.edit().putStringSet("favorite_channel_ids", current).apply()
+    }
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -260,6 +295,7 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleSubscription(matchId: String) {
         val currentSet = _subscribedMatchIds.value.toMutableSet()
+        val isSubscribing = !currentSet.contains(matchId)
         if (currentSet.contains(matchId)) {
             currentSet.remove(matchId)
         } else {
@@ -267,13 +303,124 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
         }
         _subscribedMatchIds.value = currentSet
         sharedPrefs.edit().putStringSet("subscribed_matches", currentSet).apply()
+
+        // Handle FCM Topic Subscription safely
+        try {
+            if (isSubscribing) {
+                FirebaseMessaging.getInstance().subscribeToTopic("match_$matchId")
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Log.d("FCM", "Successfully subscribed to FCM topic: match_$matchId")
+                        } else {
+                            Log.e("FCM", "Failed to subscribe to FCM topic: match_$matchId", task.exception)
+                        }
+                    }
+            } else {
+                FirebaseMessaging.getInstance().unsubscribeFromTopic("match_$matchId")
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Log.d("FCM", "Successfully unsubscribed from FCM topic: match_$matchId")
+                        } else {
+                            Log.e("FCM", "Failed to unsubscribe from FCM topic: match_$matchId", task.exception)
+                        }
+                    }
+            }
+        } catch (e: Exception) {
+            Log.e("FCM", "FCM Topic subscription error: ${e.message}")
+        }
+    }
+
+    fun playMatchById(matchIdStr: String) {
+        viewModelScope.launch {
+            // Wait up to 3 seconds for matches list to load if empty (e.g. on clean launch)
+            var matches = allMatches.value
+            var attempts = 0
+            while (matches.isEmpty() && attempts < 30) {
+                kotlinx.coroutines.delay(100)
+                matches = allMatches.value
+                attempts++
+            }
+            val match = matches.find { it.id.toString() == matchIdStr }
+            if (match != null) {
+                playStream(match.streamUrl, match.title)
+            } else {
+                Log.w("SportzfyViewModel", "playMatchById: Match not found with ID: $matchIdStr")
+            }
+        }
     }
 
     // Web Server info
     private val _webServerUrl = MutableStateFlow("Starting...")
     val webServerUrl: StateFlow<String> = _webServerUrl.asStateFlow()
 
-    private val webServer = AdminWebServer(application, repository)
+    private val webServer = AdminWebServer(application, repository) {
+        loadCustomization()
+    }
+
+    data class CustomizationState(
+        val primaryColor: String = "#00E5FF",
+        val shadowColor: String = "#FF1744",
+        val bgColor: String = "#0B111E",
+        val headerBgColor: String = "#0F1826",
+        val appTitle: String = "Sportzfy",
+        val loadingText: String = "Loading live streams...",
+        val announcementText: String = "Welcome to the updated Sportzfy App! Enjoy seamless HD streams.",
+        val announcementEnabled: Boolean = false,
+        val fontStyle: String = "SansSerif",
+        val hasTopLogo: Boolean = false,
+        val hasLoadingLogo: Boolean = false,
+        val hasAppLogo: Boolean = false,
+        val hasAndroidLogo: Boolean = false,
+        val noticeText: String = "This is our official announcement. Keep supporting us for the best sports streaming experience!",
+        val copyrightText: String = "Sportzfy respects intellectual property rights. All live television channels and match feeds are synced from public endpoints managed via our user console website. Please contact us via email if you find any infringing materials.",
+        val joinUsUrl: String = "https://t.me/sportzfy_live",
+        val supportEmail: String = "support@sportzfy.live"
+    )
+
+    private val _customization = MutableStateFlow(CustomizationState())
+    val customization: StateFlow<CustomizationState> = _customization.asStateFlow()
+
+    fun loadCustomization() {
+        val prim = sharedPrefs.getString("custom_primary_color", "#00E5FF") ?: "#00E5FF"
+        val shad = sharedPrefs.getString("custom_shadow_color", "#FF1744") ?: "#FF1744"
+        val bg = sharedPrefs.getString("custom_bg_color", "#0B111E") ?: "#0B111E"
+        val hBg = sharedPrefs.getString("custom_header_bg_color", "#0F1826") ?: "#0F1826"
+        val title = sharedPrefs.getString("custom_app_title", "Sportzfy") ?: "Sportzfy"
+        val loading = sharedPrefs.getString("custom_loading_text", "Loading live streams...") ?: "Loading live streams..."
+        val annText = sharedPrefs.getString("custom_announcement_text", "Welcome to the updated Sportzfy App! Enjoy seamless HD streams.") ?: "Welcome to the updated Sportzfy App! Enjoy seamless HD streams."
+        val annEnabled = sharedPrefs.getBoolean("custom_announcement_enabled", false)
+        val font = sharedPrefs.getString("custom_font_style", "SansSerif") ?: "SansSerif"
+
+        val notice = sharedPrefs.getString("custom_notice_text", "This is our official announcement. Keep supporting us for the best sports streaming experience!") ?: "This is our official announcement. Keep supporting us for the best sports streaming experience!"
+        val copyright = sharedPrefs.getString("custom_copyright_text", "Sportzfy respects intellectual property rights. All live television channels and match feeds are synced from public endpoints managed via our user console website. Please contact us via email if you find any infringing materials.") ?: "Sportzfy respects intellectual property rights. All live television channels and match feeds are synced from public endpoints managed via our user console website. Please contact us via email if you find any infringing materials."
+        val joinUs = sharedPrefs.getString("custom_join_us_url", "https://t.me/sportzfy_live") ?: "https://t.me/sportzfy_live"
+        val email = sharedPrefs.getString("custom_support_email", "support@sportzfy.live") ?: "support@sportzfy.live"
+
+        val hasTop = java.io.File(getApplication<Application>().filesDir, "logo_top.png").exists()
+        val hasLoading = java.io.File(getApplication<Application>().filesDir, "logo_loading.png").exists()
+        val hasApp = java.io.File(getApplication<Application>().filesDir, "logo_app.png").exists()
+        val hasAndroid = java.io.File(getApplication<Application>().filesDir, "logo_android.png").exists()
+
+        _customization.value = CustomizationState(
+            primaryColor = prim,
+            shadowColor = shad,
+            bgColor = bg,
+            headerBgColor = hBg,
+            appTitle = title,
+            loadingText = loading,
+            announcementText = annText,
+            announcementEnabled = annEnabled,
+            fontStyle = font,
+            hasTopLogo = hasTop,
+            hasLoadingLogo = hasLoading,
+            hasAppLogo = hasApp,
+            hasAndroidLogo = hasAndroid,
+            noticeText = notice,
+            copyrightText = copyright,
+            joinUsUrl = joinUs,
+            supportEmail = email
+        )
+    }
 
     data class UpdateConfig(
         val versionCode: Int,
@@ -310,6 +457,8 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
 
             val request = Request.Builder()
                 .url(url)
+                .addHeader("User-Agent", "SportzfySecureClient/1.2.0")
+                .addHeader("X-Sportzfy-Sec-Key", "sportzfy_bulletproof_android_sec_2026")
                 .get()
                 .build()
 
@@ -347,6 +496,8 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
 
             val request = Request.Builder()
                 .url(checkUrl)
+                .addHeader("User-Agent", "SportzfySecureClient/1.2.0")
+                .addHeader("X-Sportzfy-Sec-Key", "sportzfy_bulletproof_android_sec_2026")
                 .get()
                 .build()
 
@@ -388,6 +539,7 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
     }
 
     init {
+        loadCustomization()
         viewModelScope.launch {
             // Start parallel periodic maintenance checks
             launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -501,6 +653,8 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
 
             val request = Request.Builder()
                 .url(reportUrl)
+                .addHeader("User-Agent", "SportzfySecureClient/1.2.0")
+                .addHeader("X-Sportzfy-Sec-Key", "sportzfy_bulletproof_android_sec_2026")
                 .post(body)
                 .build()
 
@@ -559,5 +713,6 @@ class SportzfyViewModel(application: Application) : AndroidViewModel(application
 enum class SportzfyTab {
     Home,
     Categories,
-    Highlights
+    Highlights,
+    Favorites
 }

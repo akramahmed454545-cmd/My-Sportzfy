@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sportzfy Live - Admin Portal Secure Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #070b13; color: #f3f4f6; }
+        .glass-card {
+            background: rgba(21, 31, 50, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(30, 45, 74, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(0, 229, 255, 0.05);
+        }
+        .glow-input:focus {
+            outline: none;
+            border-color: #00e5ff;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased flex items-center justify-center min-h-screen p-4 overflow-x-hidden">
+    <!-- Starfield/Glow Decorative Background -->
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <div class="w-full max-w-md relative z-10">
+        <!-- Logo Section -->
+        <div class="text-center mb-8">
+            <div class="flex items-center justify-center gap-3 mb-2">
+                <span class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-blue-500">SPORTZFY</span>
+                <span class="bg-gradient-to-r from-red-500 to-orange-500 text-[10px] text-white font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider shadow-lg shadow-red-500/20">Secure Shield</span>
+            </div>
+            <p class="text-xs text-gray-400 uppercase tracking-widest font-semibold">Unified Admin Administration</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="glass-card rounded-3xl p-8 relative overflow-hidden">
+            <!-- Top indicator line -->
+            <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-white mb-1">Administrative Login</h2>
+                <p class="text-xs text-gray-400">Provide credentials to access configuration dashboard.</p>
+            </div>
+
+            <!-- Error Notice Box -->
+            <div id="errorBox" class="hidden mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-2xl flex items-start gap-3 text-red-200 text-xs animate-fade-in">
+                <i class="fa-solid fa-triangle-exclamation text-red-400 text-base mt-0.5 shrink-0"></i>
+                <div>
+                    <p class="font-bold">Access Denied</p>
+                    <p id="errorText" class="text-red-300/90 mt-0.5">Invalid username or password.</p>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                    <label for="username" class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Username</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500">
+                            <i class="fa-solid fa-user-shield text-sm"></i>
+                        </span>
+                        <input id="username" type="text" required autocomplete="username"
+                            class="w-full bg-[#0b111e]/80 border border-[#1e2d4a] rounded-2xl py-3.5 pl-11 pr-4 text-sm text-white placeholder-gray-500 transition-all duration-300 glow-input"
+                            placeholder="Enter username">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="password" class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500">
+                            <i class="fa-solid fa-key text-sm"></i>
+                        </span>
+                        <input id="password" type="password" required autocomplete="current-password"
+                            class="w-full bg-[#0b111e]/80 border border-[#1e2d4a] rounded-2xl py-3.5 pl-11 pr-12 text-sm text-white placeholder-gray-500 transition-all duration-300 glow-input"
+                            placeholder="Enter secure password">
+                        <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-cyan-400 transition">
+                            <i id="eyeIcon" class="fa-solid fa-eye-slash text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button id="submitBtn" type="submit"
+                        class="w-full bg-gradient-to-r from-cyan-400 via-teal-400 to-blue-500 hover:opacity-90 active:scale-[0.98] text-slate-950 font-extrabold py-4 px-6 rounded-2xl text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-cyan-400/10">
+                        <i class="fa-solid fa-lock-open text-xs"></i>
+                        <span>Secure Sign In</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Footer Notice -->
+        <div class="text-center mt-6 space-y-2">
+            <p class="text-[10px] text-gray-500 flex items-center justify-center gap-1.5 uppercase tracking-wider font-semibold">
+                <i class="fa-solid fa-shield-halved text-cyan-500"></i>
+                <span>Authorized Administrative Personnel Only</span>
+            </p>
+            <p class="text-[9px] text-gray-600">IP logging and security tracking are active. Unauthorized access attempts will be blocked.</p>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const submitBtn = document.getElementById('submitBtn');
+            const errorBox = document.getElementById('errorBox');
+            const errorText = document.getElementById('errorText');
+
+            // Reset UI States
+            errorBox.classList.add('hidden');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-xs"></i><span>Authenticating...</span>`;
+
+            const payload = {
+                username: usernameInput.value.trim(),
+                password: passwordInput.value
+            };
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // Login successful!
+                    submitBtn.innerHTML = `<i class="fa-solid fa-circle-check text-xs"></i><span>Access Granted!</span>`;
+                    submitBtn.className = "w-full bg-green-500 text-white font-extrabold py-4 px-6 rounded-2xl text-xs uppercase tracking-wider flex items-center justify-center gap-2";
+                    
+                    // Redirect to Admin dashboard
+                    setTimeout(() => {
+                        window.location.href = "/";
+                    }, 800);
+                } else {
+                    // Show error
+                    errorText.innerText = result.error || "Invalid username or password.";
+                    errorBox.classList.remove('hidden');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `<i class="fa-solid fa-lock-open text-xs"></i><span>Secure Sign In</span>`;
+                }
+            } catch (err) {
+                errorText.innerText = "Network error. Failed to reach authentication server.";
+                errorBox.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-lock-open text-xs"></i><span>Secure Sign In</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

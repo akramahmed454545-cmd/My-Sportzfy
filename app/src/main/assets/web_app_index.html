@@ -4,50 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sportzfy - Live Streaming App</title>
-    <!-- Bulletproof Browser Shield & Anti-Scraping / Anti-Sniffing protection -->
-    <script>
-        document.addEventListener('contextmenu', function (e) {
-            e.preventDefault();
-        });
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'F12' || e.keyCode === 123) {
-                e.preventDefault();
-                return false;
-            }
-            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C' || e.key === 'U' || e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67 || e.keyCode === 85)) {
-                e.preventDefault();
-                return false;
-            }
-            if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
-                e.preventDefault();
-                return false;
-            }
-            if (e.ctrlKey && (e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
-                e.preventDefault();
-                return false;
-            }
-        });
-        document.addEventListener('selectstart', function (e) {
-            const tag = e.target.tagName ? e.target.tagName.toLowerCase() : '';
-            if (tag !== 'input' && tag !== 'textarea') {
-                e.preventDefault();
-            }
-        });
-        (function() {
-            const block = function() {
-                setInterval(function() {
-                    debugger;
-                }, 100);
-            };
-            try {
-                block();
-            } catch(err) {}
-        })();
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
     <style>
+        :root {
+            --primary-color: #00E5FF;
+            --shadow-color: #FF1744;
+            --bg-color: #0B111E;
+            --header-bg-color: #0F1826;
+        }
+
+        body {
+            background-color: var(--bg-color, #05080f) !important;
+        }
+
+        .app-container {
+            background-color: var(--bg-color, #080c14) !important;
+        }
+
+        header, #drawerMenu {
+            background-color: var(--header-bg-color, #0c1222) !important;
+        }
+
+        .neon-title {
+            color: var(--primary-color, #00E5FF) !important;
+            text-shadow: 2px 2px 0px var(--shadow-color, rgba(255, 0, 128, 0.7)) !important;
+        }
+
+        .animate-marquee {
+            color: var(--primary-color, #00E5FF) !important;
+        }
+
         /* Modern Scrollbar styling */
         ::-webkit-scrollbar {
             width: 4px;
@@ -179,6 +167,16 @@
             display: inline-block;
         }
 
+        /* Beautiful Loading Page Progress Bar */
+        @keyframes progressBar {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        .animate-progress-bar {
+            animation: progressBar 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
         /* Floating PiP player styles */
         .floating-player {
             position: fixed !important;
@@ -231,6 +229,37 @@
 </head>
 <body class="font-sans antialiased">
 
+    <!-- Beautiful App Loading Page / Splash Screen -->
+    <div id="loadingScreen" class="fixed inset-0 bg-[#05080f] z-[99999] flex flex-col items-center justify-center p-6 text-center transition-all duration-500">
+        <div class="relative flex flex-col items-center max-w-sm w-full">
+            <!-- Glowing Logo Container -->
+            <div class="w-32 h-32 mb-8 relative flex items-center justify-center bg-[#0c1222]/80 border border-[#1e2d4a] rounded-3xl p-4 shadow-2xl animate-pulse">
+                <!-- Glowing cyan backing overlay -->
+                <div class="absolute inset-0 bg-cyan-500/10 rounded-3xl blur-xl"></div>
+                <!-- Logo Image / Placeholder -->
+                <img id="loadingScreenLogo" src="/api/customization/logo-loading" alt="Loading Logo" class="relative z-10 max-w-full max-h-full object-contain hidden" onload="this.classList.remove('hidden')">
+                <div id="loadingScreenLogoFallback" class="relative z-10 text-cyan-400 text-5xl">
+                    <i class="fa-solid fa-circle-play"></i>
+                </div>
+            </div>
+            
+            <!-- Customized Loading Text -->
+            <h2 id="loadingScreenText" class="text-white text-xs font-black tracking-widest uppercase mb-6 drop-shadow-lg">
+                Loading Live Streams...
+            </h2>
+            
+            <!-- Sleek Linear Progress Bar -->
+            <div class="w-48 h-1 bg-[#131f37] rounded-full overflow-hidden relative border border-[#1e2d4a]">
+                <div class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full animate-progress-bar w-0"></div>
+            </div>
+            
+            <!-- Tiny Footer -->
+            <div class="absolute bottom-[-120px] text-[9px] text-gray-500 font-bold tracking-widest uppercase">
+                Sportzfy Live Streaming
+            </div>
+        </div>
+    </div>
+
     <!-- Maintenance Mode Full Screen Block -->
     <div id="maintenanceOverlay" class="fixed inset-0 bg-[#05080f] z-[10000] flex flex-col items-center justify-center p-6 text-center hidden">
         <div class="relative w-full max-w-md bg-[#0c1222] border border-[#1e2d4a] rounded-3xl p-8 flex flex-col items-center shadow-2xl">
@@ -245,6 +274,40 @@
             <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
                 Thank you for your patience
             </div>
+        </div>
+    </div>
+
+    <!-- Notice Modal Overlay -->
+    <div id="webNoticeModal" class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 hidden">
+        <div class="relative w-full max-w-md bg-[#0c1222] border border-[#1e2d4a] rounded-3xl p-6 flex flex-col items-center shadow-2xl">
+            <div class="w-16 h-16 bg-cyan-500/10 border border-cyan-500/30 rounded-full flex items-center justify-center mb-4 text-cyan-400 text-2xl">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+            <h3 class="text-xl font-black neon-title mb-2 tracking-wider">Announcement</h3>
+            <div class="h-0.5 w-12 bg-gradient-to-r from-cyan-400 to-blue-500 mb-4"></div>
+            <p id="webNoticeMessage" class="text-gray-300 text-sm leading-relaxed text-center mb-6 font-medium whitespace-pre-wrap">
+                Loading announcement...
+            </p>
+            <button onclick="closeWebNoticeModal()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-black font-extrabold py-3 rounded-2xl text-sm transition hover:brightness-110">
+                Dismiss
+            </button>
+        </div>
+    </div>
+
+    <!-- Copyright Modal Overlay -->
+    <div id="webCopyrightModal" class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 hidden">
+        <div class="relative w-full max-w-md bg-[#0c1222] border border-[#1e2d4a] rounded-3xl p-6 flex flex-col items-center shadow-2xl">
+            <div class="w-16 h-16 bg-cyan-500/10 border border-cyan-500/30 rounded-full flex items-center justify-center mb-4 text-cyan-400 text-2xl">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <h3 class="text-xl font-black neon-title mb-2 tracking-wider">Copyright Disclaimer</h3>
+            <div class="h-0.5 w-12 bg-gradient-to-r from-cyan-400 to-blue-500 mb-4"></div>
+            <p id="webCopyrightMessage" class="text-gray-300 text-xs leading-relaxed text-center mb-6 font-medium whitespace-pre-wrap">
+                Loading disclaimer...
+            </p>
+            <button onclick="closeWebCopyrightModal()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-black font-extrabold py-3 rounded-2xl text-sm transition hover:brightness-110">
+                OK
+            </button>
         </div>
     </div>
 
@@ -301,10 +364,6 @@
                     <i class="fa-solid fa-circle-play text-cyan-400 text-sm"></i>
                     <span>Network Stream</span>
                 </div>
-                <div onclick="showDrawerToast('Remote Sync Panel')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
-                    <i class="fa-solid fa-arrows-rotate text-cyan-400 text-sm"></i>
-                    <span>Remote Sync Panel</span>
-                </div>
                 <div onclick="showDrawerToast('Playlists')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
                     <i class="fa-solid fa-list text-cyan-400 text-sm"></i>
                     <span>Playlists</span>
@@ -321,21 +380,21 @@
                     <i class="fa-solid fa-circle-chevron-right text-cyan-400 text-sm"></i>
                     <span>Select Streaming Player</span>
                 </div>
-                <div onclick="showDrawerToast('Crash Log')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
-                    <i class="fa-solid fa-wrench text-cyan-400 text-sm"></i>
-                    <span>Crash Log Dialog</span>
-                </div>
-                <div onclick="showDrawerToast('Notice Board')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                <div onclick="openWebNoticeModal()" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
                     <i class="fa-solid fa-bell text-cyan-400 text-sm"></i>
                     <span>Notice</span>
                 </div>
-                <div onclick="showDrawerToast('Join Us')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                <div onclick="openWebJoinUsLink()" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
                     <i class="fa-solid fa-user-group text-cyan-400 text-sm"></i>
                     <span>Join Us</span>
                 </div>
-                <div onclick="showDrawerToast('Copyright Information')" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                <div onclick="openWebCopyrightModal()" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
                     <i class="fa-solid fa-info-circle text-cyan-400 text-sm"></i>
                     <span>Copyright</span>
+                </div>
+                <div onclick="openWebEmail()" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
+                    <i class="fa-solid fa-envelope text-cyan-400 text-sm"></i>
+                    <span>Email</span>
                 </div>
                 <a href="/apk/sportzfy-latest.apk" class="flex items-center space-x-3 px-3 py-3 rounded-xl hover:bg-[#0f172a] text-gray-300 hover:text-white transition cursor-pointer text-xs font-semibold">
                     <i class="fa-solid fa-share-nodes text-cyan-400 text-sm"></i>
@@ -392,7 +451,14 @@
                     <span class="live-pulse-dot"></span>
                     <h2 id="nowPlayingTitle" class="text-xs font-bold text-cyan-400 truncate max-w-[320px]">Streaming Live</h2>
                 </div>
-                <button onclick="closePlayer()" class="text-gray-400 hover:text-white bg-gray-800 p-1 rounded-full"><i class="fa-solid fa-xmark text-xs"></i></button>
+                <div class="flex items-center space-x-2">
+                    <button id="webPlayerFullscreenBtn" onclick="toggleWebPlayerFullscreen()" class="text-gray-400 hover:text-cyan-400 bg-gray-800 p-1 rounded-full flex items-center justify-center h-[24px] w-[24px] transition" title="Fullscreen Preview">
+                        <i class="fa-solid fa-expand text-[10px]"></i>
+                    </button>
+                    <button onclick="closePlayer()" class="text-gray-400 hover:text-white bg-gray-800 p-1 rounded-full flex items-center justify-center h-[24px] w-[24px] transition">
+                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
+                </div>
             </div>
             <div class="bg-black rounded-xl overflow-hidden aspect-video relative flex items-center justify-center border border-[#1e2d4a]">
                 <video id="videoElement" controls class="w-full h-full object-contain hidden"></video>
@@ -450,24 +516,24 @@
                     <span>Smart Fallback Line</span>
                 </button>
             </div>
+        </div>
 
-            <!-- Manual Clickable Banner Ad / Player -->
-            <div id="webBannerAdContainer" class="hidden mt-3 border border-dashed border-[#1e2d4a] rounded-xl overflow-hidden bg-black/40 p-1 relative group">
-                <a id="webBannerAdLink" href="#" target="_blank" class="block w-full h-full">
-                    <div class="relative w-full flex justify-center items-center overflow-hidden rounded-lg min-h-[45px]">
-                        <!-- Render Image/GIF -->
-                        <img id="webBannerImage" class="hidden w-full h-auto max-h-[160px] object-contain transition-transform duration-300 group-hover:scale-[1.02]" src="" alt="Advertisement">
-                        <!-- Render Video -->
-                        <video id="webBannerVideo" class="hidden w-full h-auto max-h-[160px] object-contain" loop muted autoplay playsinline></video>
+        <!-- Manual Clickable Banner Ad / Player (Always visible outside player section) -->
+        <div id="webBannerAdContainer" class="hidden mx-4 my-3 border border-[#1e2d4a] rounded-xl overflow-hidden bg-[#0f172a] p-1.5 relative group shadow-lg">
+            <a id="webBannerAdLink" href="#" target="_blank" class="block w-full h-full">
+                <div class="relative w-full flex justify-center items-center overflow-hidden rounded-lg min-h-[45px]">
+                    <!-- Render Image/GIF -->
+                    <img id="webBannerImage" class="hidden w-full h-auto max-h-[160px] object-contain transition-transform duration-300 group-hover:scale-[1.01]" src="" alt="Advertisement">
+                    <!-- Render Video -->
+                    <video id="webBannerVideo" class="hidden w-full h-auto max-h-[160px] object-contain" loop muted autoplay playsinline></video>
 
-                        <!-- Click Indicator Overlay -->
-                        <div class="absolute top-2 right-2 bg-black/70 text-[9px] text-cyan-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span>Visit Link</span>
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        </div>
+                    <!-- Click Indicator Overlay -->
+                    <div class="absolute top-2 right-2 bg-black/80 text-[8px] text-cyan-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span>Ad • Visit Link</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
                     </div>
-                </a>
-            </div>
+                </div>
+            </a>
         </div>
 
         <!-- App Content Scroller -->
@@ -553,22 +619,6 @@
                 </div>
             </div>
 
-            <!-- TAB 4: FAVORITES -->
-            <div id="tabContent-favorites" class="p-4 space-y-4 hidden">
-                <h2 class="text-lg font-bold text-white tracking-wide">My Favorites</h2>
-                <p class="text-xs text-gray-400">Quick access to your preferred matches and channels</p>
-                
-                <h3 class="text-xs font-black text-[#00E5FF] tracking-wider pt-2 uppercase">Favorite Matches</h3>
-                <div id="favoriteMatchesContainer" class="space-y-4">
-                    <!-- Dynamic favorite matches cards -->
-                </div>
-                
-                <h3 class="text-xs font-black text-[#00E5FF] tracking-wider pt-4 uppercase">Favorite TV Channels</h3>
-                <div id="favoriteChannelsGrid" class="grid grid-cols-3 gap-3 pb-8">
-                    <!-- Dynamic favorite channels -->
-                </div>
-            </div>
-
         </div>
 
         <!-- M3 Bottom Navigation Bar -->
@@ -597,15 +647,6 @@
                         <i class="fa-solid fa-play text-lg"></i>
                     </div>
                     <span class="text-[10px] mt-1 font-semibold tracking-wide">Highlights</span>
-                </div>
-            </button>
-
-            <button onclick="switchTab('favorites')" id="btnTab-favorites" class="flex flex-col items-center justify-center text-gray-400 hover:text-white transition group flex-grow max-w-[120px]">
-                <div class="m3-capsule">
-                    <div class="m3-capsule-bg">
-                        <i class="fa-solid fa-heart text-lg"></i>
-                    </div>
-                    <span class="text-[10px] mt-1 font-semibold tracking-wide">Favorites</span>
                 </div>
             </button>
         </nav>
@@ -763,14 +804,167 @@
         let adSettings = null;
         let userCountryCode = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function hideLoadingScreen() {
+            const screen = document.getElementById('loadingScreen');
+            if (screen) {
+                screen.classList.add('opacity-0');
+                setTimeout(() => {
+                    screen.classList.add('hidden');
+                }, 500);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Apply cached loading screen text if available to prevent flash
+            try {
+                const storedText = localStorage.getItem('custom_loading_text');
+                if (storedText) {
+                    document.getElementById('loadingScreenText').textContent = storedText;
+                }
+            } catch (e) {}
+
             checkMaintenanceStatus();
-            fetchMatches();
-            fetchChannels();
-            fetchHighlights();
-            initAdsSystem();
             setInterval(checkMaintenanceStatus, 15000); // Check every 15 seconds for updates
+
+            // Wait for all critical initialization parallel tasks to complete
+            try {
+                await Promise.all([
+                    fetchCustomization(),
+                    fetchMatches(),
+                    fetchChannels(),
+                    fetchHighlights(),
+                    initAdsSystem()
+                ]);
+            } catch (err) {
+                console.error("Initialization error:", err);
+            } finally {
+                // Ensure loading screen is hidden with a sleek extra transition delay
+                setTimeout(hideLoadingScreen, 1200);
+            }
         });
+
+        let customizationData = null;
+
+        async function fetchCustomization() {
+            try {
+                const res = await fetch('/api/customization');
+                const data = await res.json();
+                if (data.success) {
+                    customizationData = data;
+
+                    // Update Loading Screen elements dynamically
+                    if (data.loadingText) {
+                        const loadText = document.getElementById('loadingScreenText');
+                        if (loadText) {
+                            loadText.textContent = data.loadingText;
+                        }
+                        localStorage.setItem('custom_loading_text', data.loadingText);
+                    }
+                    if (data.hasLoadingLogo) {
+                        const img = document.getElementById('loadingScreenLogo');
+                        const fallback = document.getElementById('loadingScreenLogoFallback');
+                        if (img && fallback) {
+                            img.src = "/api/customization/logo-loading?t=" + Date.now();
+                            img.classList.remove('hidden');
+                            fallback.classList.add('hidden');
+                        }
+                    } else if (data.hasAppLogo) {
+                        const img = document.getElementById('loadingScreenLogo');
+                        const fallback = document.getElementById('loadingScreenLogoFallback');
+                        if (img && fallback) {
+                            img.src = "/api/customization/logo-app?t=" + Date.now();
+                            img.classList.remove('hidden');
+                            fallback.classList.add('hidden');
+                        }
+                    }
+                    document.documentElement.style.setProperty('--primary-color', data.primaryColor);
+                    document.documentElement.style.setProperty('--shadow-color', data.shadowColor);
+                    document.documentElement.style.setProperty('--bg-color', data.bgColor);
+                    document.documentElement.style.setProperty('--header-bg-color', data.headerBgColor);
+
+                    if (data.fontStyle === 'Serif') {
+                        document.body.style.fontFamily = 'Georgia, serif';
+                    } else if (data.fontStyle === 'Monospace') {
+                        document.body.style.fontFamily = 'Courier New, monospace';
+                    } else if (data.fontStyle === 'Cursive') {
+                        document.body.style.fontFamily = 'cursive';
+                    } else {
+                        document.body.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+                    }
+
+                    // Update Top header logo
+                    const topLogoSpan = document.querySelector('header .neon-title');
+                    if (topLogoSpan) {
+                        if (data.hasTopLogo) {
+                            topLogoSpan.innerHTML = `<img src="/api/customization/logo-top" alt="${data.appTitle}" class="h-8 max-w-[150px] object-contain">`;
+                        } else {
+                            topLogoSpan.textContent = data.appTitle;
+                        }
+                    }
+
+                    // Update Drawer logo
+                    const drawerLogoSpan = document.querySelector('#drawerMenu .neon-title');
+                    if (drawerLogoSpan) {
+                        if (data.hasAppLogo) {
+                            drawerLogoSpan.innerHTML = `<img src="/api/customization/logo-app" alt="${data.appTitle}" class="h-10 max-w-[200px] object-contain">`;
+                        } else {
+                            drawerLogoSpan.textContent = data.appTitle;
+                        }
+                    }
+
+                    // Update HTML Title
+                    document.title = `${data.appTitle} - Live Streaming App`;
+
+                    // Update Announcement text
+                    if (data.announcementEnabled && data.announcementText) {
+                        const marqueeDiv = document.querySelector('.animate-marquee');
+                        if (marqueeDiv) {
+                            marqueeDiv.textContent = data.announcementText;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load customization:", e);
+            }
+        }
+
+        function openWebNoticeModal() {
+            toggleDrawer(false);
+            const modal = document.getElementById('webNoticeModal');
+            const message = document.getElementById('webNoticeMessage');
+            const noticeText = (customizationData && customizationData.noticeText) ? customizationData.noticeText : "This is our official announcement. Keep supporting us for the best sports streaming experience!";
+            message.innerText = noticeText;
+            modal.classList.remove('hidden');
+        }
+
+        function closeWebNoticeModal() {
+            document.getElementById('webNoticeModal').classList.add('hidden');
+        }
+
+        function openWebCopyrightModal() {
+            toggleDrawer(false);
+            const modal = document.getElementById('webCopyrightModal');
+            const message = document.getElementById('webCopyrightMessage');
+            const copyrightText = (customizationData && customizationData.copyrightText) ? customizationData.copyrightText : "Sportzfy respects intellectual property rights. All live television channels and match feeds are synced from public endpoints managed via our user console website. Please contact us via email if you find any infringing materials.";
+            message.innerText = copyrightText;
+            modal.classList.remove('hidden');
+        }
+
+        function closeWebCopyrightModal() {
+            document.getElementById('webCopyrightModal').classList.add('hidden');
+        }
+
+        function openWebJoinUsLink() {
+            toggleDrawer(false);
+            const url = (customizationData && customizationData.joinUsUrl) ? customizationData.joinUsUrl : "https://t.me/sportzfy_live";
+            window.open(url, '_blank');
+        }
+
+        function openWebEmail() {
+            toggleDrawer(false);
+            const email = (customizationData && customizationData.supportEmail) ? customizationData.supportEmail : "support@sportzfy.live";
+            window.location.href = "mailto:" + email + "?subject=Feedback on Sportzfy Live";
+        }
 
         async function checkMaintenanceStatus() {
             try {
@@ -849,30 +1043,21 @@
                 console.log("Loaded Enterprise Ads Settings:", adSettings);
 
                 // 3. Verify global ad server status
-                if (!adSettings || !adSettings.enabled) {
-                    console.log("Ad server is globally PAUSED.");
-                    document.getElementById('webBannerAdContainer').classList.add('hidden');
-                    return;
-                }
+                const adsGloballyEnabled = adSettings && adSettings.enabled;
 
                 // 4. Verify geo-targeting rules
-                if (adSettings.targeting === 'country' && adSettings.targetCountries && adSettings.targetCountries.length > 0) {
-                    // Check if detected country code is listed
-                    const isTargeted = adSettings.targetCountries.some(c => c.trim().toUpperCase() === userCountryCode);
-                    if (!isTargeted) {
-                        console.log(`Visitor from [${userCountryCode}] is not targeted. Disabling all ads.`);
-                        document.getElementById('webBannerAdContainer').classList.add('hidden');
-                        return;
-                    }
+                let isTargeted = true;
+                if (adSettings && adSettings.targeting === 'country' && adSettings.targetCountries && adSettings.targetCountries.length > 0) {
+                    isTargeted = adSettings.targetCountries.some(c => c.trim().toUpperCase() === userCountryCode);
                 }
 
                 // 5. Trigger Startup / App Open Ad overlay if enabled
-                if (adSettings.appOpenAd && adSettings.appOpenAd.enabled) {
+                if (adsGloballyEnabled && isTargeted && adSettings.appOpenAd && adSettings.appOpenAd.enabled) {
                     showAppOpenAd(adSettings.appOpenAd);
                 }
 
-                // 6. Display legacy banner ad if active
-                if (adSettings.bannerAd && adSettings.bannerAd.enabled) {
+                // 6. Display legacy banner ad if active (Matches Android App client behavior)
+                if (adSettings && adSettings.bannerAd && adSettings.bannerAd.enabled) {
                     renderLegacyBannerAd(adSettings.bannerAd);
                 } else {
                     document.getElementById('webBannerAdContainer').classList.add('hidden');
@@ -1155,7 +1340,7 @@
         // Tab Switching
         function switchTab(tabId) {
             activeTab = tabId;
-            ['home', 'categories', 'highlights', 'favorites'].forEach(id => {
+            ['home', 'categories', 'highlights'].forEach(id => {
                 const content = document.getElementById('tabContent-' + id);
                 const btn = document.getElementById('btnTab-' + id);
                 if (id === tabId) {
@@ -1166,9 +1351,6 @@
                     btn.classList.remove('active-tab');
                 }
             });
-            if (tabId === 'favorites') {
-                renderFavorites();
-            }
             // Scroll to top
             document.getElementById('appContent').scrollTop = 0;
         }
@@ -1332,12 +1514,6 @@
                         <span>Subscribe</span>
                        </button>`;
 
-                const favs = getFavoriteMatchIds();
-                const isFavorite = favs.includes(match.id.toString());
-                const favButtonHtml = `<button onclick="toggleMatchFavorite(${match.id}, event)" class="p-1.5 text-xs transition duration-200 text-rose-500 hover:text-rose-400 shrink-0">
-                    <i class="${isFavorite ? 'fa-solid' : 'fa-regular'} fa-heart text-base"></i>
-                </button>`;
-
                 card.innerHTML = '<div class="flex justify-between items-center mb-3">' +
                     '<span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">' + match.sport + ' || ' + match.title + '</span>' +
                     '<div class="flex items-center space-x-2">' +
@@ -1361,7 +1537,7 @@
                     '</div>' +
                 '</div>' +
                 '<div class="border-t border-[#1a263d]/50 mt-3 pt-3 flex justify-between items-center">' +
-                    favButtonHtml +
+                    '<span class="text-[9px] text-gray-400 font-bold uppercase bg-slate-900/50 px-2 py-1 rounded-md border border-[#1a263d]">' + match.sport + '</span>' +
                     subButtonHtml +
                 '</div>';
                 container.appendChild(card);
@@ -1407,20 +1583,13 @@
 
                 channelsList.forEach(ch => {
                     const card = document.createElement('div');
-                    card.className = "bg-[#0c1424] border border-[#1a263d] rounded-2xl p-3 flex flex-col items-center justify-between text-center cursor-pointer hover:border-[#00e5ff]/50 transition duration-300 relative aspect-square shadow-sm";
+                    card.className = "bg-[#0c1424] border border-[#1a263d] rounded-2xl p-3 flex flex-col items-center justify-between text-center cursor-pointer hover:border-[#00e5ff]/50 transition duration-300 aspect-square shadow-sm";
                     card.onclick = () => playStream(ch.streamUrl, ch.name);
 
                     // First two letters of name
                     const prefix = ch.name.substring(0, 2).toUpperCase();
 
-                    const favChs = getFavoriteChannelIds();
-                    const isFavCh = favChs.includes(ch.id.toString());
-                    const favChButtonHtml = `<button onclick="toggleChannelFavorite(${ch.id}, event)" class="absolute top-1 right-1 text-rose-500 hover:text-rose-400 p-1 text-[10px] transition duration-200 z-10">
-                        <i class="${isFavCh ? 'fa-solid' : 'fa-regular'} fa-heart"></i>
-                    </button>`;
-
-                    card.innerHTML = favChButtonHtml +
-                    '<div class="w-10 h-10 rounded-xl bg-[#080c14] border border-[#1a263d] flex items-center justify-center shrink-0 shadow-inner mt-1">' +
+                    card.innerHTML = '<div class="w-10 h-10 rounded-xl bg-[#080c14] border border-[#1a263d] flex items-center justify-center shrink-0 shadow-inner">' +
                         '<span class="text-cyan-400 font-extrabold text-xs tracking-wider">' + prefix + '</span>' +
                     '</div>' +
                     '<div class="text-[10px] font-bold text-white line-clamp-2 leading-tight px-0.5">' + ch.name + '</div>' +
@@ -1795,6 +1964,27 @@
             }
         }
 
+        function toggleWebPlayerFullscreen() {
+            const playerArea = document.querySelector('#playerSection .aspect-video') || document.getElementById('playerSection');
+            if (!document.fullscreenElement) {
+                if (playerArea.requestFullscreen) {
+                    playerArea.requestFullscreen();
+                } else if (playerArea.webkitRequestFullscreen) { /* Safari */
+                    playerArea.webkitRequestFullscreen();
+                } else if (playerArea.msRequestFullscreen) { /* IE11 */
+                    playerArea.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
         // Auto-Float Media Player on page scroll
         document.addEventListener('DOMContentLoaded', () => {
             const appContent = document.getElementById('appContent');
@@ -1830,187 +2020,6 @@
                 });
             }
         });
-
-        function getFavoriteMatchIds() {
-            try {
-                return JSON.parse(localStorage.getItem('fav_matches') || '[]');
-            } catch(e) {
-                return [];
-            }
-        }
-
-        function getFavoriteChannelIds() {
-            try {
-                return JSON.parse(localStorage.getItem('fav_channels') || '[]');
-            } catch(e) {
-                return [];
-            }
-        }
-
-        function toggleMatchFavorite(matchId, event) {
-            if (event) event.stopPropagation();
-            let favs = getFavoriteMatchIds();
-            const idStr = matchId.toString();
-            if (favs.includes(idStr)) {
-                favs = favs.filter(id => id !== idStr);
-                showToastAlert('Removed match from favorites!');
-            } else {
-                favs.push(idStr);
-                showToastAlert('Added match to favorites!');
-            }
-            localStorage.setItem('fav_matches', JSON.stringify(favs));
-            renderMatches();
-            if (activeTab === 'favorites') {
-                renderFavorites();
-            }
-        }
-
-        function toggleChannelFavorite(channelId, event) {
-            if (event) event.stopPropagation();
-            let favs = getFavoriteChannelIds();
-            const idStr = channelId.toString();
-            if (favs.includes(idStr)) {
-                favs = favs.filter(id => id !== idStr);
-                showToastAlert('Removed channel from favorites!');
-            } else {
-                favs.push(idStr);
-                showToastAlert('Added channel to favorites!');
-            }
-            localStorage.setItem('fav_channels', JSON.stringify(favs));
-            renderCategories();
-            if (activeTab === 'favorites') {
-                renderFavorites();
-            }
-        }
-
-        function showToastAlert(message) {
-            const toast = document.getElementById('toastAlert');
-            if (toast) {
-                toast.innerText = message;
-                toast.classList.remove('opacity-0', 'scale-90');
-                toast.classList.add('opacity-100', 'scale-100');
-                setTimeout(() => {
-                    toast.classList.add('opacity-0', 'scale-90');
-                    toast.classList.remove('opacity-100', 'scale-100');
-                }, 3000);
-            }
-        }
-
-        function renderFavorites() {
-            // 1. Render Matches
-            const mContainer = document.getElementById('favoriteMatchesContainer');
-            if (mContainer) {
-                mContainer.innerHTML = '';
-                const favMatchIds = getFavoriteMatchIds();
-                const favMatches = allMatches.filter(m => favMatchIds.includes(m.id.toString()));
-
-                if (favMatches.length === 0) {
-                    mContainer.innerHTML = '<div class="py-10 text-center text-gray-500 border border-[#1a263d]/50 bg-[#0c1424]/30 rounded-2xl">' +
-                        '<i class="fa-regular fa-heart text-xl mb-1 text-gray-600"></i>' +
-                        '<p class="text-[11px] font-semibold">No favorite matches yet.</p>' +
-                    '</div>';
-                } else {
-                    favMatches.forEach(match => {
-                        const isLive = match.status.toLowerCase() === 'live';
-                        const timeHtml = isLive 
-                            ? '<span class="text-[#00E5FF] text-[10px] font-bold">03:54:23</span>' 
-                            : '<span class="text-[#00E5FF] text-[10px] font-semibold">' + match.time + '</span>';
-
-                        const badgeHtml = isLive 
-                            ? '<span class="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md flex items-center space-x-1 animate-pulse"><span class="w-1.5 h-1.5 rounded-full bg-white"></span><span>LIVE</span></span>' 
-                            : '<span class="bg-gray-700 text-gray-300 text-[9px] font-bold px-2 py-0.5 rounded-md">UPCOMING</span>';
-
-                        const card = document.createElement('div');
-                        card.className = "bg-[#0c1424] border border-[#1a263d] rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-[#00e5ff]/50 transition duration-300 shadow-md";
-                        card.onclick = () => playStream(match.streamUrl, match.team1Name + " vs " + match.team2Name + " - " + match.title);
-
-                        const t1Initial = match.team1Name.substring(0, 3).toUpperCase();
-                        const t2Initial = match.team2Name.substring(0, 3).toUpperCase();
-
-                        const subs = getSubscribedMatches();
-                        const isSubscribed = subs.includes(match.id);
-                        const subButtonHtml = isSubscribed 
-                            ? `<button onclick="toggleMatchSubscription(${match.id}, event)" class="flex items-center space-x-1.5 bg-[#00E5FF]/20 hover:bg-[#00E5FF]/30 text-[#00E5FF] border border-[#00E5FF]/40 px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition duration-200">
-                                <i class="fa-solid fa-bell-slash"></i>
-                                <span>Alert Set</span>
-                               </button>`
-                            : `<button onclick="toggleMatchSubscription(${match.id}, event)" class="flex items-center space-x-1.5 bg-[#0f172a] hover:bg-[#1e2d4a] text-gray-400 border border-transparent hover:border-gray-700 px-3 py-1.5 rounded-xl text-[10px] font-bold transition duration-200">
-                                <i class="fa-regular fa-bell"></i>
-                                <span>Subscribe</span>
-                               </button>`;
-
-                        card.innerHTML = '<div class="flex justify-between items-center mb-3">' +
-                            '<span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">' + match.sport + ' || ' + match.title + '</span>' +
-                            '<div class="flex items-center space-x-2">' +
-                                timeHtml +
-                                badgeHtml +
-                            '</div>' +
-                        '</div>' +
-                        '<div class="flex items-center justify-between py-2 px-1">' +
-                            '<div class="flex items-center space-x-3 w-[45%]">' +
-                                '<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white text-xs font-black border border-cyan-400/20 shrink-0 shadow-inner">' +
-                                    '<span class="text-[10px]">' + t1Initial + '</span>' +
-                                '</div>' +
-                                '<span class="text-xs font-bold text-white truncate">' + match.team1Name + '</span>' +
-                            '</div>' +
-                            '<span class="text-[11px] font-extrabold text-gray-500 tracking-wider">VS</span>' +
-                            '<div class="flex items-center justify-end space-x-3 w-[45%] text-right">' +
-                                '<span class="text-xs font-bold text-white truncate">' + match.team2Name + '</span>' +
-                                '<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-600 to-red-600 flex items-center justify-center text-white text-xs font-black border border-red-400/20 shrink-0 shadow-inner">' +
-                                    '<span class="text-[10px]">' + t2Initial + '</span>' +
-                                '</div>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div class="border-t border-[#1a263d]/50 mt-3 pt-3 flex justify-between items-center">' +
-                            `<button onclick="toggleMatchFavorite(${match.id}, event)" class="p-1.5 text-xs transition duration-200 text-rose-500 hover:text-rose-400 shrink-0">` +
-                                '<i class="fa-solid fa-heart text-base"></i>' +
-                            '</button>' +
-                            '<div>' + subButtonHtml + '</div>' +
-                        '</div>';
-
-                        mContainer.appendChild(card);
-                    });
-                }
-            }
-
-            // 2. Render Channels
-            const cGrid = document.getElementById('favoriteChannelsGrid');
-            if (cGrid) {
-                cGrid.innerHTML = '';
-                const favChannelIds = getFavoriteChannelIds();
-                const favChannels = allChannels.filter(c => favChannelIds.includes(c.id.toString()));
-
-                if (favChannels.length === 0) {
-                    cGrid.className = "block";
-                    cGrid.innerHTML = '<div class="py-10 text-center text-gray-500 border border-[#1a263d]/50 bg-[#0c1424]/30 rounded-2xl">' +
-                        '<i class="fa-regular fa-heart text-xl mb-1 text-gray-600"></i>' +
-                        '<p class="text-[11px] font-semibold">No favorite channels yet.</p>' +
-                    '</div>';
-                } else {
-                    cGrid.className = "grid grid-cols-3 gap-3 pb-8";
-                    favChannels.forEach(ch => {
-                        const card = document.createElement('div');
-                        card.className = "bg-[#0c1424] border border-[#1a263d] rounded-2xl p-3 flex flex-col items-center justify-between text-center cursor-pointer hover:border-[#00e5ff]/50 transition duration-300 relative aspect-square shadow-sm";
-                        card.onclick = () => playStream(ch.streamUrl, ch.name);
-
-                        const prefix = ch.name.substring(0, 2).toUpperCase();
-
-                        card.innerHTML = `<button onclick="toggleChannelFavorite(${ch.id}, event)" class="absolute top-1 right-1 text-rose-500 hover:text-rose-400 p-1 text-[10px] transition duration-200 z-10">` +
-                            '<i class="fa-solid fa-heart"></i>' +
-                        '</button>' +
-                        '<div class="w-10 h-10 rounded-xl bg-[#080c14] border border-[#1a263d] flex items-center justify-center shrink-0 shadow-inner mt-1">' +
-                            '<span class="text-cyan-400 font-extrabold text-xs tracking-wider">' + prefix + '</span>' +
-                        '</div>' +
-                        '<div class="text-[10px] font-bold text-white line-clamp-2 leading-tight px-0.5">' + ch.name + '</div>' +
-                        '<div class="flex items-center space-x-1">' +
-                            '<span class="live-pulse-dot"></span>' +
-                            '<span class="text-[8px] font-black text-red-500 uppercase tracking-widest">LIVE</span>' +
-                        '</div>';
-                        cGrid.appendChild(card);
-                    });
-                }
-            }
-        }
 
         // Initialize user tracking and pings
         setInterval(sendWebUserHeartbeat, 15000);

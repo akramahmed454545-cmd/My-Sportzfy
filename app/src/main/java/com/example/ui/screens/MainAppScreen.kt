@@ -3,6 +3,16 @@ package com.example.ui.screens
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -62,11 +72,17 @@ fun MainAppScreen(
     modifier: Modifier = Modifier
 ) {
     val maintenanceState by viewModel.maintenanceState.collectAsStateWithLifecycle()
+    val customization by viewModel.customization.collectAsStateWithLifecycle()
+
+    val primaryColor = try { Color(android.graphics.Color.parseColor(customization.primaryColor)) } catch(e: Exception) { Color(0xFF00E5FF) }
+    val shadowColor = try { Color(android.graphics.Color.parseColor(customization.shadowColor)) } catch(e: Exception) { Color(0xFFFF1744) }
+    val bgColor = try { Color(android.graphics.Color.parseColor(customization.bgColor)) } catch(e: Exception) { Color(0xFF0B111E) }
+    val headerBgColor = try { Color(android.graphics.Color.parseColor(customization.headerBgColor)) } catch(e: Exception) { Color(0xFF0F1826) }
 
     if (maintenanceState.enabled) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF0B111E)
+            color = bgColor
         ) {
             Box(
                 modifier = Modifier
@@ -157,6 +173,8 @@ fun MainAppScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val context = LocalContext.current
 
+    var showSplash by remember { mutableStateOf(true) }
+
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedSportFilter by viewModel.selectedSportFilter.collectAsStateWithLifecycle()
@@ -207,7 +225,36 @@ fun MainAppScreen(
                 highlight.team1Name.contains(searchQuery, ignoreCase = true) || highlight.team2Name.contains(searchQuery, ignoreCase = true)
     }
 
+    var isAdVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(activeStreamUrl) {
+        if (activeStreamUrl != null) {
+            isAdVisible = true
+        }
+    }
+
+    val nestedScrollConnection = remember(activeStreamUrl) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (activeStreamUrl != null) {
+                    val delta = available.y
+                    if (delta < -15f) { // Scrolling down
+                        if (isAdVisible) {
+                            isAdVisible = false
+                        }
+                    } else if (delta > 15f) { // Scrolling up
+                        if (!isAdVisible) {
+                            isAdVisible = true
+                        }
+                    }
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     // Modal display flags
+    var showMoreMenu by remember { mutableStateOf(false) }
     var showNoticeDialog by remember { mutableStateOf(false) }
     var showCopyrightDialog by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
@@ -574,8 +621,8 @@ fun MainAppScreen(
     if (showNoticeDialog) {
         AlertDialog(
             onDismissRequest = { showNoticeDialog = false },
-            title = { Text("Sportzfy Announcement") },
-            text = { Text(activeNotice) },
+            title = { Text("${customization.appTitle} Announcement") },
+            text = { Text(customization.noticeText) },
             confirmButton = {
                 TextButton(onClick = { showNoticeDialog = false }) { Text("Dismiss") }
             }
@@ -586,7 +633,7 @@ fun MainAppScreen(
         AlertDialog(
             onDismissRequest = { showCopyrightDialog = false },
             title = { Text("Copyright Disclaimer") },
-            text = { Text("Sportzfy respects intellectual property rights. All live television channels and match feeds are synced from public endpoints managed via our user console website. Please contact us via email if you find any infringing materials.") },
+            text = { Text(customization.copyrightText) },
             confirmButton = {
                 TextButton(onClick = { showCopyrightDialog = false }) { Text("OK") }
             }
@@ -599,7 +646,13 @@ fun MainAppScreen(
             title = { Text("Join Telegram Channel") },
             text = { Text("Keep supporting us to receive immediate channel announcements, backup domain addresses, and the latest releases. Tap below to subscribe to our group!") },
             confirmButton = {
-                TextButton(onClick = { showJoinDialog = false }) { Text("Join Telegram") }
+                TextButton(onClick = {
+                    showJoinDialog = false
+                    try {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(customization.joinUsUrl))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {}
+                }) { Text("Join Telegram") }
             },
             dismissButton = {
                 TextButton(onClick = { showJoinDialog = false }) { Text("Close") }
@@ -717,9 +770,10 @@ fun MainAppScreen(
         )
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
+    Box(modifier = Modifier.fillMaxSize()) {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
             ModalDrawerSheet(
                 drawerContainerColor = Color(0xFF0F1826),
                 modifier = Modifier.width(300.dp)
@@ -737,7 +791,7 @@ fun MainAppScreen(
                             .padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        SportzfyLogoText(fontSize = 32.sp)
+                        SportzfyLogoText(viewModel = viewModel, fontSize = 32.sp, isDrawerHeader = true)
                     }
 
                     HorizontalDivider(color = Color(0xFF1E2D4A))
@@ -746,12 +800,10 @@ fun MainAppScreen(
                     // Menu items
                     val menuItems = listOf(
                         DrawerItem("Network Stream", Icons.Default.PlayArrow, { viewModel.playStream("https://test-streams.mux.dev/x36xhf/x36xhf.m3u8", "Manual Network Stream") }),
-                        DrawerItem("Remote Sync Panel", Icons.Default.Refresh, { showSyncDialog = true }),
                         DrawerItem("Playlists", Icons.Default.List, { showPlaylistsDialog = true }),
                         DrawerItem("Floating Player", Icons.Default.PlayArrow, { showFloatingPlayerDialog = true }),
                         DrawerItem("Video Quality Setting", Icons.Default.Settings, { showQualityDialog = true }),
                         DrawerItem("Select Streaming Player", Icons.Default.PlayArrow, { showEngineDialog = true }),
-                        DrawerItem("Crash Log Dialog", Icons.Default.Build, { showCrashLogDialog = true }),
                         DrawerItem("Notice", Icons.Default.Notifications, { showNoticeDialog = true }),
                         DrawerItem("Join Us", Icons.Default.Person, { showJoinDialog = true }),
                         DrawerItem("Copyright", Icons.Default.Info, { showCopyrightDialog = true }),
@@ -759,18 +811,18 @@ fun MainAppScreen(
                             try {
                                 val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                     type = "text/plain"
-                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Sportzfy Live App")
-                                    putExtra(android.content.Intent.EXTRA_TEXT, "Watch Live Sports & TV on Sportzfy Live!\nWeb Console: $webServerUrl")
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "${customization.appTitle} Live App")
+                                    putExtra(android.content.Intent.EXTRA_TEXT, "Watch Live Sports & TV on ${customization.appTitle} Live!\nWeb Console: $webServerUrl")
                                 }
-                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Sportzfy Live"))
+                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share ${customization.appTitle} Live"))
                             } catch (e: Exception) {}
                         }),
                         DrawerItem("Email", Icons.Default.Email, {
                             try {
                                 val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
                                     data = android.net.Uri.parse("mailto:")
-                                    putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf("support@sportzfy.live"))
-                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Feedback on Sportzfy Live")
+                                    putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(customization.supportEmail))
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Feedback on ${customization.appTitle} Live")
                                 }
                                 context.startActivity(intent)
                             } catch (e: Exception) {}
@@ -811,13 +863,13 @@ fun MainAppScreen(
         }
     ) {
         Scaffold(
-            containerColor = Color(0xFF0B111E),
+            containerColor = bgColor,
             topBar = {
                 // Main Header conforming to the design
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF0F1826))
+                        .background(headerBgColor)
                         .padding(top = 16.dp)
                 ) {
                     Row(
@@ -832,7 +884,7 @@ fun MainAppScreen(
                         }
 
                         // Logo matching layout
-                        SportzfyLogoText()
+                        SportzfyLogoText(viewModel = viewModel)
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { /* Search trigger */ }) {
@@ -841,8 +893,37 @@ fun MainAppScreen(
                             IconButton(onClick = { showNoticeDialog = true }) {
                                 Icon(Icons.Default.Star, contentDescription = "Favorites", tint = Color.White)
                             }
-                            IconButton(onClick = { showNoticeDialog = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                            Box {
+                                IconButton(onClick = { showMoreMenu = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                                }
+                                DropdownMenu(
+                                    expanded = showMoreMenu,
+                                    onDismissRequest = { showMoreMenu = false },
+                                    modifier = Modifier
+                                        .background(Color(0xFF0F1826))
+                                        .border(1.dp, Color(0xFF1E2D4A), RoundedCornerShape(8.dp))
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Refresh App", color = Color.White) },
+                                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color(0xFF00E5FF)) },
+                                        onClick = {
+                                            showMoreMenu = false
+                                            viewModel.syncWithRemoteServer()
+                                            viewModel.loadCustomization()
+                                            android.widget.Toast.makeText(context, "App refreshed successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Exit App", color = Color.White) },
+                                        leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = "Exit", tint = Color(0xFFFF1744)) },
+                                        onClick = {
+                                            showMoreMenu = false
+                                            (context as? android.app.Activity)?.finish()
+                                            System.exit(0)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -857,9 +938,16 @@ fun MainAppScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = activeNotice,
-                            color = Color(0xFF00E5FF),
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = if (customization.announcementEnabled) customization.announcementText else activeNotice,
+                            color = primaryColor,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontFamily = when(customization.fontStyle) {
+                                    "Serif" -> FontFamily.Serif
+                                    "Monospace" -> FontFamily.Monospace
+                                    "Cursive" -> FontFamily.Cursive
+                                    else -> FontFamily.SansSerif
+                                }
+                            ),
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Visible
@@ -870,7 +958,7 @@ fun MainAppScreen(
             bottomBar = {
                 // Bottom Tab Icons matching image
                 NavigationBar(
-                    containerColor = Color(0xFF0F1826),
+                    containerColor = headerBgColor,
                     tonalElevation = 8.dp
                 ) {
                     NavigationBarItem(
@@ -912,6 +1000,19 @@ fun MainAppScreen(
                             unselectedTextColor = Color.Gray
                         )
                     )
+                    NavigationBarItem(
+                        selected = currentTab == SportzfyTab.Favorites,
+                        onClick = { viewModel.selectTab(SportzfyTab.Favorites) },
+                        icon = { Icon(Icons.Default.Favorite, contentDescription = "Favorites") },
+                        label = { Text("Favorites") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color(0xFF00E5FF),
+                            selectedTextColor = Color(0xFF00E5FF),
+                            indicatorColor = Color(0xFF00E5FF).copy(alpha = 0.15f),
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray
+                        )
+                    )
 
                 }
             }
@@ -921,6 +1022,7 @@ fun MainAppScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .background(Color(0xFF0B111E))
+                    .nestedScroll(nestedScrollConnection)
             ) {
                 Column {
                     // Inline Video Player shown globally if a stream is active
@@ -1013,54 +1115,14 @@ fun MainAppScreen(
                                     }
                                 }
                                 
-                                /*
-                                // Direct Quick Player Engine Switcher row
-                                Text(
-                                    text = "Quick Engine Switch:",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Color.Gray,
-                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-                                )
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    PlayerEngine.values().forEach { engine ->
-                                        val isSelected = engine == selectedPlayerEngine
-                                        Card(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clickable { viewModel.updatePlayerEngine(engine) },
-                                            colors = CardDefaults.cardColors(
-                                                containerColor = if (isSelected) Color(0xFF00E5FF).copy(alpha = 0.2f)
-                                                else Color(0xFF0F1826)
-                                            ),
-                                            shape = RoundedCornerShape(8.dp),
-                                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E5FF)) else null
-                                        ) {
-                                            Text(
-                                                text = when(engine) {
-                                                    PlayerEngine.EXOPLAYER -> "ExoPlayer"
-                                                    PlayerEngine.NATIVE_VIDEO_VIEW -> "System"
-                                                    PlayerEngine.WEB_EMBED -> "Web-Embed"
-                                                    PlayerEngine.EXTERNAL_APP -> "External"
-                                                },
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = if (isSelected) Color(0xFF00E5FF) else Color.White,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = 8.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                                */
-
                                 // Custom Banner Ad Player managed from Admin Panel with redirect link
-                                BannerAdView(bannerAd = bannerAd)
+                                AnimatedVisibility(
+                                    visible = isAdVisible,
+                                    enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                                    exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut()
+                                ) {
+                                    BannerAdView(bannerAd = bannerAd)
+                                }
                             }
                         }
                     }
@@ -1080,12 +1142,25 @@ fun MainAppScreen(
                             viewModel = viewModel,
                             filteredHighlights = filteredHighlights
                         )
-
+                        SportzfyTab.Favorites -> FavoritesScreenContent(
+                            viewModel = viewModel,
+                            permissionLauncher = permissionLauncher
+                        )
                     }
                 }
             }
         }
+
+        if (showSplash) {
+            SportzfySplashOverlay(
+                customization = customization,
+                primaryColor = primaryColor,
+                bgColor = bgColor,
+                onDismiss = { showSplash = false }
+            )
+        }
     }
+}
 }
 
 // ---------------- SUB SCREENS ----------------
@@ -1101,6 +1176,7 @@ fun HomeScreenContent(
 
     val context = LocalContext.current
     val subscribedMatchIds by viewModel.subscribedMatchIds.collectAsStateWithLifecycle()
+    val favoritedMatchIds by viewModel.favoritedMatchIds.collectAsStateWithLifecycle()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -1298,9 +1374,12 @@ fun HomeScreenContent(
             items(filteredMatches) { match ->
                 val matchIdStr = match.id.toString()
                 val isSubscribed = subscribedMatchIds.contains(matchIdStr)
+                val isFavorite = favoritedMatchIds.contains(matchIdStr)
                 MatchFeedCard(
                     match = match,
                     isSubscribed = isSubscribed,
+                    isFavorite = isFavorite,
+                    onFavoriteToggle = { viewModel.toggleMatchFavorite(matchIdStr) },
                     onSubscribeToggle = {
                         if (!isSubscribed) {
                             // Request notification permission if enabling subscription
@@ -1342,6 +1421,7 @@ fun CategoriesScreenContent(
     filteredChannels: List<LiveChannel>
 ) {
     var showSourcePickerChannel by remember { mutableStateOf<LiveChannel?>(null) }
+    val favoritedChannelIds by viewModel.favoritedChannelIds.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
@@ -1380,8 +1460,11 @@ fun CategoriesScreenContent(
                             userScrollEnabled = false
                         ) {
                             items(list) { channel ->
+                                val channelIdStr = channel.id.toString()
                                 ChannelItem(
                                     channel = channel,
+                                    isFavorite = favoritedChannelIds.contains(channelIdStr),
+                                    onFavoriteToggle = { viewModel.toggleChannelFavorite(channelIdStr) },
                                     onClick = {
                                         if (channel.streamUrl2.isNotBlank()) {
                                             showSourcePickerChannel = channel
@@ -1520,16 +1603,62 @@ fun HighlightsScreenContent(
 // ---------------- UI LEAF COMPONENTS ----------------
 
 @Composable
-fun SportzfyLogoText(fontSize: androidx.compose.ui.unit.TextUnit = 24.sp) {
+fun SportzfyLogoText(
+    viewModel: SportzfyViewModel,
+    fontSize: androidx.compose.ui.unit.TextUnit = 24.sp,
+    isDrawerHeader: Boolean = false
+) {
+    val cust by viewModel.customization.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val primaryColor = try { Color(android.graphics.Color.parseColor(cust.primaryColor)) } catch(e: Exception) { Color(0xFF00E5FF) }
+    val shadowColor = try { Color(android.graphics.Color.parseColor(cust.shadowColor)) } catch(e: Exception) { Color(0xFFFF1744) }
+
+    val fontFamily = when(cust.fontStyle) {
+        "Serif" -> FontFamily.Serif
+        "Monospace" -> FontFamily.Monospace
+        "Cursive" -> FontFamily.Cursive
+        else -> FontFamily.SansSerif
+    }
+
+    val hasCustomLogo = if (isDrawerHeader) cust.hasAppLogo else cust.hasTopLogo
+    val logoFilename = if (isDrawerHeader) "logo_app.png" else "logo_top.png"
+
+    if (hasCustomLogo) {
+        val logoFile = java.io.File(context.filesDir, logoFilename)
+        if (logoFile.exists()) {
+            AsyncImage(
+                model = logoFile,
+                contentDescription = "Custom Logo",
+                modifier = Modifier
+                    .height(if (isDrawerHeader) 48.dp else 36.dp)
+                    .widthIn(max = if (isDrawerHeader) 200.dp else 150.dp)
+            )
+        } else {
+            DefaultLogoText(cust.appTitle, fontSize, fontFamily, primaryColor, shadowColor)
+        }
+    } else {
+        DefaultLogoText(cust.appTitle, fontSize, fontFamily, primaryColor, shadowColor)
+    }
+}
+
+@Composable
+fun DefaultLogoText(
+    text: String,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    fontFamily: FontFamily,
+    primaryColor: Color,
+    shadowColor: Color
+) {
     Text(
-        text = "Sportzfy",
+        text = text,
         fontSize = fontSize,
         fontWeight = FontWeight.ExtraBold,
-        fontFamily = FontFamily.SansSerif,
-        color = Color(0xFF00E5FF),
+        fontFamily = fontFamily,
+        color = primaryColor,
         style = LocalTextStyle.current.copy(
             shadow = Shadow(
-                color = Color(0xFFFF1744),
+                color = shadowColor,
                 blurRadius = 3f,
                 offset = androidx.compose.ui.geometry.Offset(2f, 2f)
             )
@@ -1625,6 +1754,8 @@ fun StatusFilterButton(
 fun MatchFeedCard(
     match: SportMatch,
     isSubscribed: Boolean,
+    isFavorite: Boolean,
+    onFavoriteToggle: () -> Unit,
     onSubscribeToggle: () -> Unit,
     onClick: () -> Unit
 ) {
@@ -1772,33 +1903,51 @@ fun MatchFeedCard(
                     )
                 }
 
-                // Right side: Bell icon + label (Subscribe / Alert Set)
+                // Right side: Favorite button + Bell icon / Subscribe button
                 Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { onSubscribeToggle() }
-                        .background(if (isSubscribed) Color(0xFF00E5FF).copy(alpha = 0.15f) else Color.Transparent)
-                        .border(
-                            width = 1.dp,
-                            color = if (isSubscribed) Color(0xFF00E5FF) else Color(0xFF1E2D4A),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = if (isSubscribed) "Cancel alert" else "Set alert",
-                        tint = if (isSubscribed) Color(0xFF00E5FF) else Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = if (isSubscribed) "Alert Set" else "Subscribe",
-                        color = if (isSubscribed) Color(0xFF00E5FF) else Color.Gray,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.ExtraBold
-                    )
+                    // Heart icon for favorites
+                    IconButton(
+                        onClick = onFavoriteToggle,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (isFavorite) Color(0xFFFF1744) else Color.Gray,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onSubscribeToggle() }
+                            .background(if (isSubscribed) Color(0xFF00E5FF).copy(alpha = 0.15f) else Color.Transparent)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSubscribed) Color(0xFF00E5FF) else Color(0xFF1E2D4A),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = if (isSubscribed) "Cancel alert" else "Set alert",
+                            tint = if (isSubscribed) Color(0xFF00E5FF) else Color.Gray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = if (isSubscribed) "Alert Set" else "Subscribe",
+                            color = if (isSubscribed) Color(0xFF00E5FF) else Color.Gray,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
                 }
             }
         }
@@ -1808,6 +1957,8 @@ fun MatchFeedCard(
 @Composable
 fun ChannelItem(
     channel: LiveChannel,
+    isFavorite: Boolean,
+    onFavoriteToggle: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -1817,83 +1968,100 @@ fun ChannelItem(
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .height(105.dp)
+            .height(115.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
-                    .size(42.dp)
-                    .background(Color(0xFF070B11), shape = RoundedCornerShape(8.dp))
-                    .border(BorderStroke(1.dp, Color(0xFF1E2D4A)), shape = RoundedCornerShape(8.dp)),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                var isError by remember { mutableStateOf(false) }
-                if (channel.logoUrl.isNotBlank() && !isError) {
-                    AsyncImage(
-                        model = channel.logoUrl,
-                        contentDescription = channel.name,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(4.dp)
-                            .clip(RoundedCornerShape(6.dp)),
-                        onError = { isError = true }
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(Color(0xFF070B11), shape = RoundedCornerShape(8.dp))
+                        .border(BorderStroke(1.dp, Color(0xFF1E2D4A)), shape = RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    var isError by remember { mutableStateOf(false) }
+                    if (channel.logoUrl.isNotBlank() && !isError) {
+                        AsyncImage(
+                            model = channel.logoUrl,
+                            contentDescription = channel.name,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(4.dp)
+                                .clip(RoundedCornerShape(6.dp)),
+                            onError = { isError = true }
+                        )
+                    } else {
+                        Text(
+                            text = channel.name.take(2).uppercase(),
+                            color = Color(0xFF00E5FF),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = channel.name,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                    val alpha by infiniteTransition.animateFloat(
+                        initialValue = 0.3f,
+                        targetValue = 1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(800, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "alpha"
                     )
-                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .background(Color(0xFFFF1744).copy(alpha = alpha), shape = CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
-                        text = channel.name.take(2).uppercase(),
-                        color = Color(0xFF00E5FF),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        text = "LIVE",
+                        color = Color(0xFFFF1744),
+                        fontSize = 7.5.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.5.sp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = channel.name,
-                color = Color.White,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 2.dp)
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(top = 2.dp)
+            IconButton(
+                onClick = onFavoriteToggle,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(28.dp)
+                    .padding(2.dp)
             ) {
-                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                val alpha by infiniteTransition.animateFloat(
-                    initialValue = 0.3f,
-                    targetValue = 1f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(800, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "alpha"
-                )
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .background(Color(0xFFFF1744).copy(alpha = alpha), shape = CircleShape)
-                )
-                Spacer(modifier = Modifier.width(3.dp))
-                Text(
-                    text = "LIVE",
-                    color = Color(0xFFFF1744),
-                    fontSize = 7.5.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.5.sp
+                Icon(
+                    imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (isFavorite) Color(0xFFFF1744) else Color.Gray.copy(alpha = 0.6f),
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
@@ -2072,3 +2240,333 @@ fun BannerAdView(bannerAd: BannerAd?, modifier: Modifier = Modifier) {
         }
     }
 }
+
+@Composable
+fun FavoritesScreenContent(
+    viewModel: SportzfyViewModel,
+    permissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val matches by viewModel.allMatches.collectAsStateWithLifecycle()
+    val channels by viewModel.allChannels.collectAsStateWithLifecycle()
+    val favoritedMatchIds by viewModel.favoritedMatchIds.collectAsStateWithLifecycle()
+    val favoritedChannelIds by viewModel.favoritedChannelIds.collectAsStateWithLifecycle()
+    val subscribedMatchIds by viewModel.subscribedMatchIds.collectAsStateWithLifecycle()
+
+    val favoriteMatches = matches.filter { favoritedMatchIds.contains(it.id.toString()) }
+    val favoriteChannels = channels.filter { favoritedChannelIds.contains(it.id.toString()) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text(
+                text = "My Favorites",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = "Quick access to your preferred matches and channels",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        // --- FAVORITE MATCHES SECTION ---
+        item {
+            Text(
+                text = "Favorite Matches",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF00E5FF),
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        if (favoriteMatches.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1826).copy(alpha = 0.5f)),
+                    border = BorderStroke(1.dp, Color(0xFF1E2D4A).copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(36.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("No favorite matches added yet.", color = Color.Gray, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        } else {
+            items(favoriteMatches) { match ->
+                val matchIdStr = match.id.toString()
+                val isSubscribed = subscribedMatchIds.contains(matchIdStr)
+                MatchFeedCard(
+                    match = match,
+                    isSubscribed = isSubscribed,
+                    isFavorite = true,
+                    onFavoriteToggle = { viewModel.toggleMatchFavorite(matchIdStr) },
+                    onSubscribeToggle = {
+                        if (!isSubscribed) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.POST_NOTIFICATIONS
+                                ) == PackageManager.PERMISSION_GRANTED
+                                
+                                if (!hasPermission) {
+                                    permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    viewModel.toggleSubscription(matchIdStr)
+                                    Toast.makeText(context, "Alert set for ${match.team1Name} vs ${match.team2Name}!", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                viewModel.toggleSubscription(matchIdStr)
+                                Toast.makeText(context, "Alert set for ${match.team1Name} vs ${match.team2Name}!", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            viewModel.toggleSubscription(matchIdStr)
+                            Toast.makeText(context, "Alert cancelled.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onClick = { viewModel.playStream(match.streamUrl, match.title) }
+                )
+            }
+        }
+
+        // --- FAVORITE CHANNELS SECTION ---
+        item {
+            Text(
+                text = "Favorite TV Channels",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF00E5FF),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        if (favoriteChannels.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1826).copy(alpha = 0.5f)),
+                    border = BorderStroke(1.dp, Color(0xFF1E2D4A).copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(36.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("No favorite channels added yet.", color = Color.Gray, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        } else {
+            item {
+                var showSourcePickerChannel by remember { mutableStateOf<LiveChannel?>(null) }
+                
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.height(((favoriteChannels.size + 2) / 3 * 125).dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(favoriteChannels) { channel ->
+                        ChannelItem(
+                            channel = channel,
+                            isFavorite = true,
+                            onFavoriteToggle = { viewModel.toggleChannelFavorite(channel.id.toString()) },
+                            onClick = {
+                                if (channel.streamUrl2.isNotBlank()) {
+                                    showSourcePickerChannel = channel
+                                } else {
+                                    viewModel.playStream(channel.streamUrl, channel.name)
+                                }
+                            }
+                        )
+                    }
+                }
+
+                if (showSourcePickerChannel != null) {
+                    val selectedChan = showSourcePickerChannel!!
+                    val sources = listOf(
+                        selectedChan.streamUrl to "Server 1 (Primary)",
+                        selectedChan.streamUrl2 to "Server 2 (Backup)",
+                        selectedChan.streamUrl3 to "Server 3 (Backup)",
+                        selectedChan.streamUrl4 to "Server 4 (Backup)",
+                        selectedChan.streamUrl5 to "Server 5 (Backup)"
+                    ).filter { it.first.isNotBlank() }
+
+                    AlertDialog(
+                        onDismissRequest = { showSourcePickerChannel = null },
+                        containerColor = Color(0xFF0F1826),
+                        title = { Text("Select Streaming Server", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                sources.forEach { (url, label) ->
+                                    Button(
+                                        onClick = {
+                                            viewModel.playStream(url, selectedChan.name)
+                                            showSourcePickerChannel = null
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E2D4A)),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(label, color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showSourcePickerChannel = null }) {
+                                Text("Cancel", color = Color(0xFFFF1744))
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+fun SportzfySplashOverlay(
+    customization: com.example.ui.viewmodel.SportzfyViewModel.CustomizationState,
+    primaryColor: Color,
+    bgColor: Color,
+    onDismiss: () -> Unit
+) {
+    var isVisible by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+
+    // Automatically dismiss after 2.5 seconds
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(2500)
+        isVisible = false
+        onDismiss()
+    }
+
+    if (isVisible) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(bgColor)
+                .clickable(enabled = false) {}, // Block clicks from hitting underlying content
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp)
+            ) {
+                // Glow/Shadow effect for the logo container
+                Box(
+                    modifier = Modifier
+                        .size(130.dp)
+                        .background(Color(0xFF0F1826), shape = RoundedCornerShape(28.dp))
+                        .border(1.dp, Color(0xFF1E2D4A), shape = RoundedCornerShape(28.dp))
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val hasCustomLogo = customization.hasLoadingLogo || customization.hasAndroidLogo || customization.hasAppLogo
+                    val logoFilename = when {
+                        customization.hasLoadingLogo -> "logo_loading.png"
+                        customization.hasAndroidLogo -> "logo_android.png"
+                        else -> "logo_app.png"
+                    }
+                    
+                    if (hasCustomLogo) {
+                        val logoFile = java.io.File(context.filesDir, logoFilename)
+                        if (logoFile.exists()) {
+                            AsyncImage(
+                                model = logoFile,
+                                contentDescription = "Loading Logo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Inside
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Default Logo Icon",
+                                tint = primaryColor,
+                                modifier = Modifier.size(56.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Default Logo Icon",
+                            tint = primaryColor,
+                            modifier = Modifier.size(56.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Custom loading text matching branding font
+                Text(
+                    text = customization.loadingText.uppercase(),
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = when (customization.fontStyle) {
+                        "Serif" -> FontFamily.Serif
+                        "Monospace" -> FontFamily.Monospace
+                        "Cursive" -> FontFamily.Cursive
+                        else -> FontFamily.SansSerif
+                    },
+                    letterSpacing = 1.8.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Elegant Material linear progress bar
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .width(140.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = primaryColor,
+                    trackColor = Color(0xFF1E2D4A)
+                )
+
+                Spacer(modifier = Modifier.height(80.dp))
+
+                Text(
+                    text = "SPORTZFY LIVE STREAMING",
+                    color = Color.Gray,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+            }
+        }
+    }
+}
+
