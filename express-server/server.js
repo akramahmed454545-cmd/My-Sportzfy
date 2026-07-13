@@ -242,7 +242,9 @@ app.use((req, res, next) => {
         urlPath === '/api/app-update' ||
         urlPath === '/api/maintenance' ||
         urlPath === '/api/obs-status' ||
-        urlPath === '/api/analytics/track-ad-click'
+        urlPath === '/api/analytics/track-ad-click' ||
+        urlPath === '/api/customization' ||
+        urlPath.startsWith('/api/customization/logo-')
     );
     if (isPublicGet) {
         return next();
@@ -1712,6 +1714,168 @@ app.post('/api/stream-reports/dismiss', (req, res) => {
         res.json({ success: true, message: "Report dismissed successfully" });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ==========================================
+// CUSTOMIZATION & LOGO MANAGEMENT ENDPOINTS
+// ==========================================
+
+// Helper to get customization state
+function getCustomization(db) {
+    if (!db.customization) {
+        db.customization = {
+            primaryColor: "#00E5FF",
+            shadowColor: "#FF1744",
+            bgColor: "#0B111E",
+            headerBgColor: "#0F1826",
+            appTitle: "Sportzfy",
+            loadingText: "Loading live streams...",
+            announcementText: "Welcome to the updated Sportzfy App! Enjoy seamless HD streams.",
+            announcementEnabled: false,
+            fontStyle: "SansSerif",
+            noticeText: "This is our official announcement. Keep supporting us for the best sports streaming experience!",
+            copyrightText: "Sportzfy respects intellectual property rights. All live television channels and match feeds are synced from public endpoints managed via our user console website. Please contact us via email if you find any infringing materials.",
+            joinUsUrl: "https://t.me/sportzfy_live",
+            supportEmail: "support@sportzfy.live"
+        };
+    }
+    const logosDir = path.join(__dirname, 'public', 'uploads', 'logos');
+    const hasTopLogo = fs.existsSync(path.join(logosDir, 'logo_top.png'));
+    const hasLoadingLogo = fs.existsSync(path.join(logosDir, 'logo_loading.png'));
+    const hasAppLogo = fs.existsSync(path.join(logosDir, 'logo_app.png'));
+    const hasAndroidLogo = fs.existsSync(path.join(logosDir, 'logo_android.png'));
+
+    return {
+        success: true,
+        primaryColor: db.customization.primaryColor || "#00E5FF",
+        shadowColor: db.customization.shadowColor || "#FF1744",
+        bgColor: db.customization.bgColor || "#0B111E",
+        headerBgColor: db.customization.headerBgColor || "#0F1826",
+        appTitle: db.customization.appTitle || "Sportzfy",
+        loadingText: db.customization.loadingText || "Loading live streams...",
+        announcementText: db.customization.announcementText || "Welcome to the updated Sportzfy App! Enjoy seamless HD streams.",
+        announcementEnabled: !!db.customization.announcementEnabled,
+        fontStyle: db.customization.fontStyle || "SansSerif",
+        noticeText: db.customization.noticeText || "This is our official announcement. Keep supporting us for the best sports streaming experience!",
+        copyrightText: db.customization.copyrightText || "Sportzfy respects intellectual property rights. All live television channels and match feeds are synced from public endpoints managed via our user console website. Please contact us via email if you find any infringing materials.",
+        joinUsUrl: db.customization.joinUsUrl || "https://t.me/sportzfy_live",
+        supportEmail: db.customization.supportEmail || "support@sportzfy.live",
+        hasTopLogo,
+        hasLoadingLogo,
+        hasAppLogo,
+        hasAndroidLogo
+    };
+}
+
+app.get('/api/customization', (req, res) => {
+    const db = readDb();
+    res.json(getCustomization(db));
+});
+
+app.post('/api/customization', (req, res) => {
+    const db = readDb();
+    if (!db.customization) db.customization = {};
+    const body = req.body;
+    
+    db.customization.primaryColor = body.primaryColor || "#00E5FF";
+    db.customization.shadowColor = body.shadowColor || "#FF1744";
+    db.customization.bgColor = body.bgColor || "#0B111E";
+    db.customization.headerBgColor = body.headerBgColor || "#0F1826";
+    db.customization.appTitle = body.appTitle || "Sportzfy";
+    db.customization.loadingText = body.loadingText || "Loading live streams...";
+    db.customization.announcementText = body.announcementText || "Welcome to the updated Sportzfy App! Enjoy seamless HD streams.";
+    db.customization.announcementEnabled = !!body.announcementEnabled;
+    db.customization.fontStyle = body.fontStyle || "SansSerif";
+    db.customization.noticeText = body.noticeText || "This is our official announcement. Keep supporting us for the best sports streaming experience!";
+    db.customization.copyrightText = body.copyrightText || "Sportzfy respects intellectual property rights. All live television channels and match feeds are synced from public endpoints managed via our user console website. Please contact us via email if you find any infringing materials.";
+    db.customization.joinUsUrl = body.joinUsUrl || "https://t.me/sportzfy_live";
+    db.customization.supportEmail = body.supportEmail || "support@sportzfy.live";
+
+    writeDb(db);
+    res.json({ success: true, message: "Customization settings saved successfully" });
+});
+
+app.post('/api/customization/upload-logo', (req, res) => {
+    const type = (req.query.type || "").trim().toLowerCase();
+    if (type !== 'top' && type !== 'loading' && type !== 'app' && type !== 'android') {
+        return res.status(400).json({ success: false, message: "Invalid logo type. Must be 'top', 'loading', 'app', or 'android'" });
+    }
+    
+    const filename = `logo_${type}.png`;
+    const logosDir = path.join(__dirname, 'public', 'uploads', 'logos');
+    fs.mkdirSync(logosDir, { recursive: true });
+    const filePath = path.join(logosDir, filename);
+
+    const data = [];
+    req.on('data', chunk => data.push(chunk));
+    req.on('end', () => {
+        try {
+            fs.writeFileSync(filePath, Buffer.concat(data));
+            res.json({ success: true, message: `${type.charAt(0).toUpperCase() + type.slice(1)} logo uploaded successfully` });
+        } catch (e) {
+            console.error("Error writing logo file:", e);
+            res.status(500).json({ success: false, message: "Error writing logo file: " + e.message });
+        }
+    });
+});
+
+app.post('/api/customization/clear-logo', (req, res) => {
+    const type = (req.query.type || "").trim().toLowerCase();
+    if (type !== 'top' && type !== 'loading' && type !== 'app' && type !== 'android') {
+        return res.status(400).json({ success: false, message: "Invalid logo type. Must be 'top', 'loading', 'app', or 'android'" });
+    }
+    
+    const filename = `logo_${type}.png`;
+    const logosDir = path.join(__dirname, 'public', 'uploads', 'logos');
+    const filePath = path.join(logosDir, filename);
+
+    try {
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+        res.json({ success: true, message: `${type.charAt(0).toUpperCase() + type.slice(1)} logo cleared successfully` });
+    } catch (e) {
+        console.error("Error clearing logo:", e);
+        res.status(500).json({ success: false, message: "Error clearing logo: " + e.message });
+    }
+});
+
+// Serve logo images directly
+app.get('/api/customization/logo-top', (req, res) => {
+    const filePath = path.join(__dirname, 'public', 'uploads', 'logos', 'logo_top.png');
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+    } else {
+        res.status(404).send("Logo file not found");
+    }
+});
+
+app.get('/api/customization/logo-loading', (req, res) => {
+    const filePath = path.join(__dirname, 'public', 'uploads', 'logos', 'logo_loading.png');
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+    } else {
+        res.status(404).send("Logo file not found");
+    }
+});
+
+app.get('/api/customization/logo-app', (req, res) => {
+    const filePath = path.join(__dirname, 'public', 'uploads', 'logos', 'logo_app.png');
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+    } else {
+        res.status(404).send("Logo file not found");
+    }
+});
+
+app.get('/api/customization/logo-android', (req, res) => {
+    const filePath = path.join(__dirname, 'public', 'uploads', 'logos', 'logo_android.png');
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+    } else {
+        res.status(404).send("Logo file not found");
     }
 });
 
