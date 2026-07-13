@@ -144,6 +144,48 @@ app.use((req, res, next) => {
     next();
 });
 
+// Dynamic Hostname & Custom Domain Router for Separation of Admin Console and Web App
+app.use((req, res, next) => {
+    const host = req.hostname || "";
+    const urlPath = req.path;
+
+    // Check if this request is for the Admin Console
+    // localhost, local IPs, and subdomains containing "shafinconsole" or "admin" go to Admin
+    const isAdminHost = host.includes('shafinconsole') || 
+                        host.includes('admin') || 
+                        host === 'localhost' || 
+                        host === '127.0.0.1' ||
+                        host.includes('192.168.') ||
+                        host.endsWith('.run.app') || // AI Studio sandbox preview URLs
+                        host.endsWith('.local');
+
+    if (!isAdminHost) {
+        // This is a dedicated Web App custom domain (e.g., watch.sportzfymatch.live or any separate domain)
+        // We serve the /web-app client at the root "/" level and protect core routes.
+        
+        // Let API routes, OBS feeds, and APK downloads pass through normally
+        if (urlPath.startsWith('/api/') || urlPath.startsWith('/obs/') || urlPath === '/apk/sportzfy-latest.apk') {
+            return next();
+        }
+
+        // Serve static web app assets directly from public/web-app
+        let targetFile = urlPath;
+        if (targetFile === '/' || targetFile === '/index.html') {
+            targetFile = '/index.html';
+        }
+
+        const filePath = path.join(__dirname, 'public', 'web-app', targetFile);
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            return res.sendFile(filePath);
+        } else {
+            // SPA routing fallback: serve the web app index.html for any other frontend paths
+            return res.sendFile(path.join(__dirname, 'public', 'web-app', 'index.html'));
+        }
+    }
+
+    next();
+});
+
 // Authentication Check Middleware for web pages and write APIs
 app.use((req, res, next) => {
     const urlPath = req.path;
