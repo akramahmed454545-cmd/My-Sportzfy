@@ -631,6 +631,11 @@
         let allHighlights = [];
         let useCacheBuster = false;
 
+        // Custom Domain & Separate Hosting API URL Configuration:
+        // Set this to your Admin Panel domain (e.g. 'https://shafinconsole.sportzfymatch.live') 
+        // if you host the web app on a completely different hosting/domain.
+        window.API_BASE_URL = window.API_BASE_URL || localStorage.getItem('sportzfy_api_base_url') || '';
+
         function showMatchesSkeletons() {
             const container = document.getElementById('matchesContainer');
             if (!container) return;
@@ -752,7 +757,8 @@
         }
 
         function getApiUrl(path) {
-            let url = path;
+            const base = window.API_BASE_URL ? window.API_BASE_URL.replace(/\/+$/, '') : '';
+            let url = base + path;
             if (useCacheBuster) {
                 url += (url.includes('?') ? '&' : '?') + '_=' + Date.now();
             }
