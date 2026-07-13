@@ -150,8 +150,9 @@ app.use((req, res, next) => {
     const urlPath = req.path;
 
     // Check if this request is for the Admin Console
-    // localhost, local IPs, and subdomains containing "shafinconsole" or "admin" go to Admin
+    // localhost, local IPs, and subdomains containing "shafinconsole", "shafinconsle", or "admin" go to Admin
     const isAdminHost = host.includes('shafinconsole') || 
+                        host.includes('shafinconsle') || 
                         host.includes('admin') || 
                         host === 'localhost' || 
                         host === '127.0.0.1' ||
